@@ -1,0 +1,33 @@
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+let browserClient: SupabaseClient | null = null;
+
+export function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    return null;
+  }
+
+  if (!browserClient) {
+    browserClient = createClient(url, anonKey);
+  }
+
+  return browserClient;
+}
+
+export const supabaseTables = {
+  users: "users",
+  wallets: "wallets",
+  resources: "resources",
+  resourceConnections: "resource_connections",
+  usageEvents: "usage_events",
+  earningsRecords: "earnings_records",
+  payouts: "payouts",
+  healthChecks: "health_checks",
+  apiKeys: "api_keys",
+  auditLogs: "audit_logs",
+  marketplaceListings: "marketplace_listings",
+  notifications: "notifications"
+} as const;

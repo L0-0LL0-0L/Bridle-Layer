@@ -1,0 +1,211 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Press+Start+2P&display=swap");
+@import "tailwindcss";
+
+:root {
+  --background: #030303;
+  --foreground: #f8f8f2;
+}
+
+@theme inline {
+  --font-pixel: "Press Start 2P", monospace;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.07), transparent 28rem),
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    #030303;
+  background-size: auto, 100% 4px, auto;
+  color: var(--foreground);
+  font-family: var(--font-mono);
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.04) 50%, rgba(0, 0, 0, 0.06) 50%),
+    radial-gradient(circle at center, transparent 38%, rgba(0, 0, 0, 0.45) 100%);
+  background-size: 100% 4px, auto;
+  mix-blend-mode: screen;
+  opacity: 0.24;
+}
+
+::selection {
+  background: white;
+  color: black;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.font-pixel {
+  font-family: var(--font-pixel);
+}
+
+.pixel-corners {
+  clip-path: polygon(
+    0 10px,
+    10px 10px,
+    10px 0,
+    calc(100% - 10px) 0,
+    calc(100% - 10px) 10px,
+    100% 10px,
+    100% calc(100% - 10px),
+    calc(100% - 10px) calc(100% - 10px),
+    calc(100% - 10px) 100%,
+    10px 100%,
+    10px calc(100% - 10px),
+    0 calc(100% - 10px)
+  );
+}
+
+.pixel-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.blink {
+  animation: blink 1.1s steps(2, start) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.menu-hover {
+  position: relative;
+}
+
+.menu-hover:hover::before,
+.menu-hover[aria-current="page"]::before {
+  position: absolute;
+  left: -14px;
+  content: ">";
+  color: white;
+}
+
+.mascot-sigil {
+  position: relative;
+  width: 180px;
+  height: 230px;
+  image-rendering: pixelated;
+}
+
+.mascot-veil {
+  position: absolute;
+  left: 24px;
+  top: 0;
+  width: 132px;
+  height: 150px;
+  border: 12px solid white;
+  border-bottom-width: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  clip-path: polygon(50% 0, 86% 15%, 100% 58%, 84% 100%, 16% 100%, 0 58%, 14% 15%);
+  box-shadow:
+    0 0 0 8px #111,
+    inset 0 0 0 10px rgba(0, 0, 0, 0.6);
+}
+
+.mascot-face {
+  position: absolute;
+  left: 52px;
+  top: 78px;
+  width: 76px;
+  height: 62px;
+  border: 6px solid white;
+  background: #f7ccb5;
+  box-shadow: 0 0 0 6px #050505;
+}
+
+.mascot-face::before {
+  position: absolute;
+  left: 0;
+  top: -22px;
+  width: 100%;
+  height: 28px;
+  content: "";
+  background:
+    linear-gradient(90deg, #050505 0 16%, transparent 16% 22%, #050505 22% 40%, transparent 40% 46%, #050505 46% 64%, transparent 64% 70%, #050505 70% 100%);
+}
+
+.eye {
+  position: absolute;
+  top: 20px;
+  width: 12px;
+  height: 22px;
+  border: 4px solid #050505;
+  background: white;
+}
+
+.eye.left {
+  left: 14px;
+}
+
+.eye.right {
+  right: 14px;
+}
+
+.mouth {
+  position: absolute;
+  left: 31px;
+  top: 38px;
+  width: 14px;
+  height: 18px;
+  border: 4px solid #050505;
+  background: #ff7474;
+}
+
+.mascot-dress {
+  position: absolute;
+  left: 28px;
+  top: 142px;
+  width: 124px;
+  height: 82px;
+  border: 10px solid white;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 7px #050505;
+  clip-path: polygon(24% 0, 76% 0, 100% 100%, 0 100%);
+}
+
+.wallet-adapter-button {
+  border: 2px solid white !important;
+  border-radius: 0 !important;
+  background: white !important;
+  color: black !important;
+  font-family: var(--font-pixel) !important;
+  font-size: 10px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+}
+
+.react-flow__node {
+  border-radius: 0 !important;
+  font-family: var(--font-pixel);
+}
+
+.react-flow__handle {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 0 !important;
+  background: white !important;
+}
