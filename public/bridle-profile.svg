@@ -1,0 +1,28 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">BRIDLE profile picture</title>
+  <desc id="desc">A black retro pixel-art profile image with a small white-veiled mascot above the word BRIDLE.</desc>
+  <rect width="1024" height="1024" fill="#030303"/>
+  <g opacity=".16">
+    <path d="M0 36h1024M0 108h1024M0 180h1024M0 252h1024M0 324h1024M0 396h1024M0 468h1024M0 540h1024M0 612h1024M0 684h1024M0 756h1024M0 828h1024M0 900h1024M0 972h1024" stroke="#fff" stroke-width="2"/>
+  </g>
+  <g shape-rendering="crispEdges">
+    <path d="M456 208h112v16h32v16h32v32h32v48h16v160h-48v48h-48v-48H440v48h-48v-48h-48V320h16v-48h32v-32h32v-16h32v-16Z" fill="#F7F7F2"/>
+    <path d="M456 240h112v16h32v32h32v64h16v112h-32v48h-32v-64H440v64h-32v-48h-32V352h16v-64h32v-32h32v-16Z" fill="#E9E9E4"/>
+    <path d="M472 248h80v16h32v16h16v32h-32v-16h-32v-16h-48v16h-32v16h-32v-32h16v-16h32v-16Z" fill="#050505"/>
+    <path d="M440 320h144v32h16v96h-16v32H440v-32h-16v-96h16v-32Z" fill="#F4C7AE"/>
+    <path d="M440 304h144v48h-16v-16h-16v32h-16v-32h-16v48h-16v-48h-16v32h-16v-32h-16v16h-16v-48Z" fill="#050505"/>
+    <path d="M456 368h32v64h-32v-64ZM536 368h32v64h-32v-64Z" fill="#050505"/>
+    <path d="M472 384h16v32h-16v-32ZM552 384h16v32h-16v-32Z" fill="#fff"/>
+    <path d="M504 440h32v48h-32v-48Z" fill="#050505"/>
+    <path d="M512 448h16v32h-16v-32Z" fill="#FF6F6F"/>
+    <path d="M424 424h16v16h-16v-16ZM584 424h16v16h-16v-16ZM408 392h16v32h-16v-32ZM600 392h16v32h-16v-32Z" fill="#F4C7AE"/>
+    <path d="M424 512h176v48h32v48h16v64H376v-64h16v-48h32v-48Z" fill="#F7F7F2"/>
+    <path d="M440 528h144v32h-16v16h-32v-16h-48v16h-32v-16h-16v-32Z" fill="#fff"/>
+    <path d="M408 608h208v32h32v48h-32v16H408v-16h-32v-48h32v-32Z" fill="#fff"/>
+    <path d="M360 672h304v32h-16v32H376v-32h-16v-32Z" fill="#F7F7F2"/>
+    <path d="M408 736h208v16h-32v16H440v-16h-32v-16Z" fill="#D9D9D4"/>
+    <path d="M392 544h-32v16h-16v32h32v-16h16v-32ZM632 544h32v16h16v32h-32v-16h-16v-32Z" fill="#fff"/>
+  </g>
+  <text x="512" y="858" text-anchor="middle" fill="#fff" font-family="'Courier New', monospace" font-size="104" font-weight="700" letter-spacing="14">BRIDLE</text>
+  <text x="512" y="910" text-anchor="middle" fill="#999" font-family="'Courier New', monospace" font-size="22" font-weight="700" letter-spacing="9">BIND DIGITAL RESOURCES</text>
+</svg>
