@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import ReactFlow, { Background, Controls, MarkerType, type Edge, type Node } from "@xyflow/react";
+import { Background, Controls, MarkerType, ReactFlow, type Edge, type Node } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { Resource, ResourceConnection } from "@/lib/types";
 import { resourceTypeLabel } from "@/lib/utils";

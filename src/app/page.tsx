@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Cpu, Database, Globe2, Link2, Server, WalletCards, Workflow } from "lucide-react";
+import { ArrowRight, Cpu, Database, Link2, Server, WalletCards, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MascotSigil, PixelSeparator, StatCard } from "@/components/retro";

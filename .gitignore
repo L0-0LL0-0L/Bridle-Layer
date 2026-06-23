@@ -25,3 +25,4 @@ pnpm-debug.log*
 # database/demo artifacts
 *.db
 *.sqlite
+*.tsbuildinfo
