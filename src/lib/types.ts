@@ -6,6 +6,8 @@ export type Visibility = "private" | "team" | "public" | "monetized";
 
 export type PricingMode = "internal" | "free" | "metered" | "subscription" | "settlement";
 
+export type RouteVenueType = "agent-workload" | "api-proxy" | "compute" | "data" | "settlement";
+
 export type User = {
   id: string;
   name: string;
@@ -57,6 +59,49 @@ export type ResourceConnection = {
   targetId: string;
   label: string;
   status: "live" | "draft" | "paused";
+};
+
+export type RouteVenue = {
+  id: string;
+  name: string;
+  type: RouteVenueType;
+  description: string;
+  requiredTypes: ResourceType[];
+  demandUnits: number;
+  priority: number;
+  latencyTargetMs: number;
+  maxErrorRate: number;
+  status: "open" | "saturated" | "paused";
+};
+
+export type RouteScoreBreakdown = {
+  health: number;
+  latency: number;
+  reliability: number;
+  cost: number;
+  fit: number;
+};
+
+export type AutoRoute = {
+  id: string;
+  venueId: string;
+  resourceId: string;
+  score: number;
+  allocationPercent: number;
+  status: "live" | "standby" | "blocked";
+  reason: string;
+  scoreBreakdown: RouteScoreBreakdown;
+  lastScoredAt: string;
+  nextReallocationAt: string;
+};
+
+export type RouteReallocation = {
+  id: string;
+  ranAt: string;
+  nextRunAt: string;
+  durationMs: number;
+  routesChanged: number;
+  summary: string;
 };
 
 export type FlowStep = {
@@ -174,6 +219,9 @@ export type BridleState = {
   wallet: Wallet | null;
   resources: Resource[];
   connections: ResourceConnection[];
+  venues: RouteVenue[];
+  autoRoutes: AutoRoute[];
+  routeReallocations: RouteReallocation[];
   flows: OrchestrationFlow[];
   flowRuns: FlowRun[];
   usageEvents: UsageEvent[];

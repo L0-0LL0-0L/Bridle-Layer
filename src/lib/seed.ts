@@ -1,4 +1,13 @@
-import type { BridleState, FlowRun, OrchestrationFlow, Resource, ResourceConnection } from "@/lib/types";
+import type {
+  AutoRoute,
+  BridleState,
+  FlowRun,
+  OrchestrationFlow,
+  Resource,
+  ResourceConnection,
+  RouteReallocation,
+  RouteVenue
+} from "@/lib/types";
 
 export const demoUser = {
   id: "user_demo",
@@ -209,6 +218,179 @@ export const seededConnections: ResourceConnection[] = [
   }
 ];
 
+export const seededVenues: RouteVenue[] = [
+  {
+    id: "venue_agent_market",
+    name: "Agent marketplace ingress",
+    type: "agent-workload",
+    description: "Public agent requests that need high uptime and monetized execution.",
+    requiredTypes: ["ai-agent", "api", "dataset"],
+    demandUnits: 780,
+    priority: 92,
+    latencyTargetMs: 900,
+    maxErrorRate: 2,
+    status: "open"
+  },
+  {
+    id: "venue_inference_lane",
+    name: "Paid inference lane",
+    type: "compute",
+    description: "GPU-backed inference calls routed toward available compute capacity.",
+    requiredTypes: ["gpu", "api"],
+    demandUnits: 520,
+    priority: 86,
+    latencyTargetMs: 1300,
+    maxErrorRate: 2.5,
+    status: "open"
+  },
+  {
+    id: "venue_data_retrieval",
+    name: "Dataset retrieval pool",
+    type: "data",
+    description: "Retrieval traffic for token-gated datasets and agent context windows.",
+    requiredTypes: ["dataset", "api"],
+    demandUnits: 430,
+    priority: 74,
+    latencyTargetMs: 220,
+    maxErrorRate: 1,
+    status: "open"
+  },
+  {
+    id: "venue_settlement",
+    name: "Settlement rail",
+    type: "settlement",
+    description: "Wallet-enabled payout and value routing operations.",
+    requiredTypes: ["wallet", "api"],
+    demandUnits: 160,
+    priority: 68,
+    latencyTargetMs: 650,
+    maxErrorRate: 1.5,
+    status: "open"
+  }
+];
+
+export const seededAutoRoutes: AutoRoute[] = [
+  {
+    id: "route_agent_market_research",
+    venueId: "venue_agent_market",
+    resourceId: "res_research_agent_alpha",
+    score: 93,
+    allocationPercent: 66,
+    status: "live",
+    reason: "Best fit for agent workload with monetized visibility and healthy uptime.",
+    scoreBreakdown: {
+      health: 99,
+      latency: 94,
+      reliability: 96,
+      cost: 86,
+      fit: 100
+    },
+    lastScoredAt: "2026-06-23T15:35:00.000Z",
+    nextReallocationAt: "2026-06-23T15:40:00.000Z"
+  },
+  {
+    id: "route_agent_market_dataset",
+    venueId: "venue_agent_market",
+    resourceId: "res_product_embeddings_dataset",
+    score: 88,
+    allocationPercent: 34,
+    status: "live",
+    reason: "Dataset supports context retrieval for marketplace agent requests.",
+    scoreBreakdown: {
+      health: 100,
+      latency: 100,
+      reliability: 99,
+      cost: 82,
+      fit: 82
+    },
+    lastScoredAt: "2026-06-23T15:35:00.000Z",
+    nextReallocationAt: "2026-06-23T15:40:00.000Z"
+  },
+  {
+    id: "route_inference_gpu",
+    venueId: "venue_inference_lane",
+    resourceId: "res_vision_gpu_node_01",
+    score: 91,
+    allocationPercent: 78,
+    status: "live",
+    reason: "Highest compute fit with active heartbeat and public metered mode.",
+    scoreBreakdown: {
+      health: 98,
+      latency: 91,
+      reliability: 95,
+      cost: 88,
+      fit: 100
+    },
+    lastScoredAt: "2026-06-23T15:35:00.000Z",
+    nextReallocationAt: "2026-06-23T15:40:00.000Z"
+  },
+  {
+    id: "route_inference_pricing_api",
+    venueId: "venue_inference_lane",
+    resourceId: "res_internal_pricing_api",
+    score: 63,
+    allocationPercent: 22,
+    status: "standby",
+    reason: "Useful for metering but degraded error rate limits allocation.",
+    scoreBreakdown: {
+      health: 76,
+      latency: 100,
+      reliability: 52,
+      cost: 90,
+      fit: 62
+    },
+    lastScoredAt: "2026-06-23T15:35:00.000Z",
+    nextReallocationAt: "2026-06-23T15:40:00.000Z"
+  },
+  {
+    id: "route_retrieval_dataset",
+    venueId: "venue_data_retrieval",
+    resourceId: "res_product_embeddings_dataset",
+    score: 96,
+    allocationPercent: 100,
+    status: "live",
+    reason: "Fast token-gated dataset with excellent uptime and direct retrieval fit.",
+    scoreBreakdown: {
+      health: 100,
+      latency: 100,
+      reliability: 100,
+      cost: 86,
+      fit: 100
+    },
+    lastScoredAt: "2026-06-23T15:35:00.000Z",
+    nextReallocationAt: "2026-06-23T15:40:00.000Z"
+  },
+  {
+    id: "route_settlement_wallet",
+    venueId: "venue_settlement",
+    resourceId: "res_treasury_wallet",
+    score: 94,
+    allocationPercent: 100,
+    status: "live",
+    reason: "Settlement-compatible Solana wallet with perfect uptime.",
+    scoreBreakdown: {
+      health: 100,
+      latency: 100,
+      reliability: 100,
+      cost: 92,
+      fit: 100
+    },
+    lastScoredAt: "2026-06-23T15:35:00.000Z",
+    nextReallocationAt: "2026-06-23T15:40:00.000Z"
+  }
+];
+
+export const seededRouteReallocations: RouteReallocation[] = [
+  {
+    id: "realloc_20260623_1535",
+    ranAt: "2026-06-23T15:35:00.000Z",
+    nextRunAt: "2026-06-23T15:40:00.000Z",
+    durationMs: 148,
+    routesChanged: 3,
+    summary: "Scored 6 resources against 4 venues. Reduced degraded API allocation and favored dataset retrieval."
+  }
+];
+
 export const seededFlows: OrchestrationFlow[] = [
   {
     id: "flow_research_settlement",
@@ -319,6 +501,9 @@ export const initialState: BridleState = {
   },
   resources: seededResources,
   connections: seededConnections,
+  venues: seededVenues,
+  autoRoutes: seededAutoRoutes,
+  routeReallocations: seededRouteReallocations,
   flows: seededFlows,
   flowRuns: seededFlowRuns,
   usageEvents: seededResources.flatMap((resource, resourceIndex) =>

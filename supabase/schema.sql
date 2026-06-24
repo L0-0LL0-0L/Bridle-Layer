@@ -68,6 +68,46 @@ create table public.flow_runs (
   finished_at timestamptz not null default now()
 );
 
+create table public.route_venues (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid references public.users(id) on delete cascade,
+  name text not null,
+  type text not null,
+  description text not null default '',
+  required_types resource_type[] not null default '{}',
+  demand_units integer not null default 0,
+  priority integer not null default 50,
+  latency_target_ms integer not null default 1000,
+  max_error_rate numeric not null default 2,
+  status text not null default 'open',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.auto_routes (
+  id uuid primary key default gen_random_uuid(),
+  venue_id uuid references public.route_venues(id) on delete cascade,
+  resource_id uuid references public.resources(id) on delete cascade,
+  score integer not null,
+  allocation_percent integer not null,
+  status text not null default 'standby',
+  reason text not null default '',
+  score_breakdown jsonb not null default '{}'::jsonb,
+  last_scored_at timestamptz not null default now(),
+  next_reallocation_at timestamptz not null default now(),
+  unique (venue_id, resource_id)
+);
+
+create table public.route_reallocations (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid references public.users(id) on delete cascade,
+  ran_at timestamptz not null default now(),
+  next_run_at timestamptz not null,
+  duration_ms integer not null,
+  routes_changed integer not null default 0,
+  summary text not null
+);
+
 create table public.usage_events (
   id uuid primary key default gen_random_uuid(),
   resource_id uuid references public.resources(id) on delete cascade,
@@ -149,6 +189,9 @@ alter table public.resources enable row level security;
 alter table public.resource_connections enable row level security;
 alter table public.orchestration_flows enable row level security;
 alter table public.flow_runs enable row level security;
+alter table public.route_venues enable row level security;
+alter table public.auto_routes enable row level security;
+alter table public.route_reallocations enable row level security;
 alter table public.usage_events enable row level security;
 alter table public.earnings_records enable row level security;
 alter table public.payouts enable row level security;
