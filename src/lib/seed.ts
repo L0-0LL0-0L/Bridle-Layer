@@ -1,4 +1,4 @@
-import type { BridleState, Resource, ResourceConnection } from "@/lib/types";
+import type { BridleState, FlowRun, OrchestrationFlow, Resource, ResourceConnection } from "@/lib/types";
 
 export const demoUser = {
   id: "user_demo",
@@ -209,6 +209,103 @@ export const seededConnections: ResourceConnection[] = [
   }
 ];
 
+export const seededFlows: OrchestrationFlow[] = [
+  {
+    id: "flow_research_settlement",
+    name: "Research settlement loop",
+    description: "Agent retrieves context, prices the request, and prepares wallet settlement.",
+    createdAt: "2026-06-20T11:00:00.000Z",
+    updatedAt: "2026-06-23T14:12:00.000Z",
+    steps: [
+      {
+        id: "step_research_agent",
+        resourceId: "res_research_agent_alpha",
+        order: 1,
+        verb: "invoke agent"
+      },
+      {
+        id: "step_embeddings_dataset",
+        resourceId: "res_product_embeddings_dataset",
+        order: 2,
+        verb: "query dataset"
+      },
+      {
+        id: "step_pricing_api",
+        resourceId: "res_internal_pricing_api",
+        order: 3,
+        verb: "quote usage"
+      },
+      {
+        id: "step_treasury_wallet",
+        resourceId: "res_treasury_wallet",
+        order: 4,
+        verb: "prepare payout"
+      }
+    ]
+  }
+];
+
+export const seededFlowRuns: FlowRun[] = [
+  {
+    id: "run_research_settlement_001",
+    flowId: "flow_research_settlement",
+    status: "success",
+    durationMs: 1794,
+    startedAt: "2026-06-23T14:40:00.000Z",
+    finishedAt: "2026-06-23T14:40:01.794Z",
+    trace: [
+      {
+        id: "trace_research_agent_001",
+        stepId: "step_research_agent",
+        resourceId: "res_research_agent_alpha",
+        resourceName: "Research Agent Alpha",
+        verb: "invoke agent",
+        status: "success",
+        latencyMs: 842,
+        message: "Agent invocation accepted and returned structured output.",
+        startedAt: "2026-06-23T14:40:00.000Z",
+        finishedAt: "2026-06-23T14:40:00.842Z"
+      },
+      {
+        id: "trace_embeddings_dataset_001",
+        stepId: "step_embeddings_dataset",
+        resourceId: "res_product_embeddings_dataset",
+        resourceName: "Product Embeddings Dataset",
+        verb: "query dataset",
+        status: "success",
+        latencyMs: 96,
+        message: "Dataset lookup returned retrieval context.",
+        startedAt: "2026-06-23T14:40:00.842Z",
+        finishedAt: "2026-06-23T14:40:00.938Z"
+      },
+      {
+        id: "trace_pricing_api_001",
+        stepId: "step_pricing_api",
+        resourceId: "res_internal_pricing_api",
+        resourceName: "Internal Pricing API",
+        verb: "quote usage",
+        status: "success",
+        latencyMs: 446,
+        message: "Pricing quote returned with degraded route weight.",
+        startedAt: "2026-06-23T14:40:00.938Z",
+        finishedAt: "2026-06-23T14:40:01.384Z"
+      },
+      {
+        id: "trace_treasury_wallet_001",
+        stepId: "step_treasury_wallet",
+        resourceId: "res_treasury_wallet",
+        resourceName: "Treasury Wallet",
+        verb: "prepare payout",
+        status: "success",
+        latencyMs: 410,
+        message: "Settlement intent staged for Solana payout routing.",
+        startedAt: "2026-06-23T14:40:01.384Z",
+        finishedAt: "2026-06-23T14:40:01.794Z"
+      }
+    ]
+  }
+];
+
 export const initialState: BridleState = {
   user: demoUser,
   wallet: {
@@ -222,6 +319,8 @@ export const initialState: BridleState = {
   },
   resources: seededResources,
   connections: seededConnections,
+  flows: seededFlows,
+  flowRuns: seededFlowRuns,
   usageEvents: seededResources.flatMap((resource, resourceIndex) =>
     Array.from({ length: 8 }).map((_, index) => ({
       id: `usage_${resource.id}_${index}`,

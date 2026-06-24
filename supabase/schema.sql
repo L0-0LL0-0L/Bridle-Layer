@@ -48,6 +48,26 @@ create table public.resource_connections (
   created_at timestamptz not null default now()
 );
 
+create table public.orchestration_flows (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid references public.users(id) on delete cascade,
+  name text not null,
+  description text not null default '',
+  steps jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.flow_runs (
+  id uuid primary key default gen_random_uuid(),
+  flow_id uuid references public.orchestration_flows(id) on delete cascade,
+  status text not null,
+  duration_ms integer not null,
+  trace jsonb not null default '[]'::jsonb,
+  started_at timestamptz not null default now(),
+  finished_at timestamptz not null default now()
+);
+
 create table public.usage_events (
   id uuid primary key default gen_random_uuid(),
   resource_id uuid references public.resources(id) on delete cascade,
@@ -127,6 +147,8 @@ alter table public.users enable row level security;
 alter table public.wallets enable row level security;
 alter table public.resources enable row level security;
 alter table public.resource_connections enable row level security;
+alter table public.orchestration_flows enable row level security;
+alter table public.flow_runs enable row level security;
 alter table public.usage_events enable row level security;
 alter table public.earnings_records enable row level security;
 alter table public.payouts enable row level security;
