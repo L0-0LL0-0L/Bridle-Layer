@@ -40,12 +40,15 @@ export default function LandingPage() {
                 Read protocol docs
               </Link>
             </Button>
+            <Button asChild size="lg" variant="ghost">
+              <Link href="/network">Explore venues</Link>
+            </Button>
           </div>
           <PixelSeparator />
           <div className="grid gap-4 md:grid-cols-3">
             <StatCard label="resource classes" value="06" detail="agents compute data value" />
             <StatCard label="route states" value="live" detail="draft paused active" />
-            <StatCard label="settlement" value="SOL" detail="devnet-ready wallet path" />
+            <StatCard label="settlement" value="USDC" detail="x402 wallet transfer" />
           </div>
         </div>
 
@@ -106,7 +109,7 @@ export default function LandingPage() {
           {[
             ["01 REGISTER", "Connect a resource, define metadata, and let BRIDLE classify its capabilities."],
             ["02 ROUTE", "Compose conceptual flows such as Agent -> Dataset -> API -> Wallet settlement."],
-            ["03 MONETIZE", "Expose public resources, meter usage, estimate value, and prepare payouts."]
+            ["03 MONETIZE", "Expose public resources, estimate venue earnings, and settle with USDC."]
           ].map(([title, copy]) => (
             <Card key={title}>
               <CardTitle>{title}</CardTitle>

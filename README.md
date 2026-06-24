@@ -48,6 +48,7 @@ It is used in this README and wired into app metadata/Open Graph. If you want th
 | Registry | Searchable/filterable canonical list of all bound resources |
 | Resource Detail | Metadata, health, usage, monetization settings, route relationships, heartbeat simulation |
 | Orchestration | React Flow graph for conceptual resource routing |
+| Venue Directory | Public `/network` page listing venues, allocations, and estimated earnings |
 | Marketplace | Public/monetized resource explorer with pricing and availability |
 | Analytics | Usage charts, earnings estimates, compute usage, uptime, error rate, x402 settlements |
 | Wallet | Solana wallet adapter, address display, balance, real USDC transfer settlement |
@@ -100,6 +101,7 @@ src/
     dashboard/           Operator overview
     resources/           Registry, detail pages, add wizard
     orchestration/       Route graph
+    network/             Venue directory and earnings estimator
     marketplace/         Public resource explorer
     analytics/           Usage and earnings
     wallet/              x402 USDC settlement page
@@ -310,6 +312,22 @@ using (owner_id = auth.uid());
 ## Auto-router model
 
 BRIDLE includes an Auto-router MVP that scores resources against routing venues and reallocates every five minutes in the local runtime. The dashboard shows the live routes table, score breakdowns, allocation percentages, last run, next run, and a manual reroute control.
+
+The public `/network` page exposes the venue directory:
+
+- browse venues by accepted resource type
+- inspect demand, priority, latency target, and error tolerance
+- see currently allocated resources for each venue
+- estimate monthly USDC earnings from request volume, price, allocation, success rate, and BRIDLE fee
+
+Estimator formula:
+
+```text
+routed_requests = monthly_requests * allocation_percent
+billable_requests = routed_requests * success_rate
+gross_usdc = billable_requests * price_per_request
+net_usdc = gross_usdc - platform_fee
+```
 
 Venues describe demand and constraints:
 
