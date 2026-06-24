@@ -253,6 +253,8 @@ The database schema is in `supabase/schema.sql` and includes:
 - `wallets`
 - `resources`
 - `resource_connections`
+- `orchestration_flows`
+- `flow_runs`
 - `usage_events`
 - `earnings_records`
 - `payouts`
@@ -300,7 +302,7 @@ using (owner_id = auth.uid());
 
 ## Orchestration model
 
-BRIDLE treats relationships as directed edges:
+BRIDLE supports both low-level graph relationships and saved executable flows. Relationships are directed edges:
 
 ```ts
 type ResourceConnection = {
@@ -309,6 +311,44 @@ type ResourceConnection = {
   targetId: string;
   label: string;
   status: "live" | "draft" | "paused";
+};
+```
+
+Saved flows are ordered resource steps:
+
+```ts
+type OrchestrationFlow = {
+  id: string;
+  name: string;
+  description: string;
+  steps: Array<{
+    id: string;
+    resourceId: string;
+    order: number;
+    verb: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+};
+```
+
+Every run persists status, total duration, and a per-step trace:
+
+```ts
+type FlowRun = {
+  id: string;
+  flowId: string;
+  status: "success" | "failed";
+  durationMs: number;
+  startedAt: string;
+  finishedAt: string;
+  trace: Array<{
+    resourceName: string;
+    verb: string;
+    status: "success" | "failed";
+    latencyMs: number;
+    message: string;
+  }>;
 };
 ```
 

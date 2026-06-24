@@ -59,6 +59,45 @@ export type ResourceConnection = {
   status: "live" | "draft" | "paused";
 };
 
+export type FlowStep = {
+  id: string;
+  resourceId: string;
+  order: number;
+  verb: string;
+};
+
+export type OrchestrationFlow = {
+  id: string;
+  name: string;
+  description: string;
+  steps: FlowStep[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FlowStepTrace = {
+  id: string;
+  stepId: string;
+  resourceId: string;
+  resourceName: string;
+  verb: string;
+  status: "success" | "failed";
+  latencyMs: number;
+  message: string;
+  startedAt: string;
+  finishedAt: string;
+};
+
+export type FlowRun = {
+  id: string;
+  flowId: string;
+  status: "success" | "failed";
+  durationMs: number;
+  startedAt: string;
+  finishedAt: string;
+  trace: FlowStepTrace[];
+};
+
 export type UsageEvent = {
   id: string;
   resourceId: string;
@@ -135,6 +174,8 @@ export type BridleState = {
   wallet: Wallet | null;
   resources: Resource[];
   connections: ResourceConnection[];
+  flows: OrchestrationFlow[];
+  flowRuns: FlowRun[];
   usageEvents: UsageEvent[];
   earnings: EarningsRecord[];
   payouts: Payout[];
