@@ -16,7 +16,8 @@ import type {
   ResourceConnection,
   ResourceDraft,
   User,
-  Wallet
+  Wallet,
+  X402Settlement
 } from "@/lib/types";
 import { makeId, nowIso } from "@/lib/utils";
 
@@ -41,6 +42,19 @@ type BridleStore = BridleState & {
   }) => OrchestrationFlow;
   runFlow: (flowId: string) => FlowRun | null;
   reallocateRoutes: () => RouteReallocation;
+  createX402Settlement: (settlement: {
+    resourceId?: string;
+    payerAddress?: string;
+    recipientAddress: string;
+    amountUsdc: number;
+    memo: string;
+    usdcMint: string;
+    network: X402Settlement["network"];
+  }) => X402Settlement;
+  markX402Settlement: (
+    id: string,
+    patch: Pick<Partial<X402Settlement>, "status" | "signature" | "payerAddress" | "error">
+  ) => void;
   connectWallet: (address: string, balanceSol?: number) => void;
   resetDemo: () => void;
 };
@@ -58,7 +72,8 @@ function normalizeState(state: BridleState): BridleState {
     autoRoutes: state.autoRoutes || initialState.autoRoutes,
     routeReallocations: state.routeReallocations || initialState.routeReallocations,
     flows: state.flows || initialState.flows,
-    flowRuns: state.flowRuns || initialState.flowRuns
+    flowRuns: state.flowRuns || initialState.flowRuns,
+    x402Settlements: state.x402Settlements || initialState.x402Settlements
   };
 }
 
@@ -598,6 +613,69 @@ export function BridleProvider({ children }: { children: ReactNode }) {
         const { state: nextState, reallocation } = applyRouteReallocation(state);
         setState(nextState);
         return reallocation;
+      },
+      createX402Settlement: (settlement) => {
+        const created: X402Settlement = {
+          id: makeId("x402"),
+          status: "pending-signature",
+          createdAt: nowIso(),
+          updatedAt: nowIso(),
+          ...settlement
+        };
+
+        setState((current) => ({
+          ...current,
+          x402Settlements: [created, ...current.x402Settlements],
+          auditLogs: [
+            {
+              id: makeId("audit"),
+              actor: current.user?.name || "BRIDLE settlement",
+              action: "created x402 USDC settlement",
+              target: `${created.amountUsdc} USDC`,
+              createdAt: created.createdAt
+            },
+            ...current.auditLogs
+          ]
+        }));
+
+        return created;
+      },
+      markX402Settlement: (id, patch) => {
+        setState((current) => ({
+          ...current,
+          x402Settlements: current.x402Settlements.map((settlement) =>
+            settlement.id === id
+              ? {
+                  ...settlement,
+                  ...patch,
+                  updatedAt: nowIso()
+                }
+              : settlement
+          ),
+          auditLogs: [
+            {
+              id: makeId("audit"),
+              actor: current.user?.name || "BRIDLE settlement",
+              action: `x402 settlement ${patch.status || "updated"}`,
+              target: patch.signature || id,
+              createdAt: nowIso()
+            },
+            ...current.auditLogs
+          ],
+          notifications:
+            patch.status === "confirmed" || patch.status === "failed"
+              ? [
+                  {
+                    id: makeId("note"),
+                    title: patch.status === "confirmed" ? "USDC settlement confirmed" : "USDC settlement failed",
+                    body: patch.signature || patch.error || id,
+                    severity: patch.status === "confirmed" ? "success" : "warning",
+                    createdAt: nowIso()
+                  },
+                  ...current.notifications
+                ]
+              : current.notifications
+        }));
       },
       connectWallet: (address, balanceSol = 0) => {
         setState((current) => {

@@ -28,6 +28,7 @@ export const supabaseTables = {
   usageEvents: "usage_events",
   earningsRecords: "earnings_records",
   payouts: "payouts",
+  x402Settlements: "x402_settlements",
   healthChecks: "health_checks",
   apiKeys: "api_keys",
   auditLogs: "audit_logs",

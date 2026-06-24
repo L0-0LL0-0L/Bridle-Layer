@@ -6,7 +6,8 @@ import type {
   Resource,
   ResourceConnection,
   RouteReallocation,
-  RouteVenue
+  RouteVenue,
+  X402Settlement
 } from "@/lib/types";
 
 export const demoUser = {
@@ -488,6 +489,22 @@ export const seededFlowRuns: FlowRun[] = [
   }
 ];
 
+export const seededX402Settlements: X402Settlement[] = [
+  {
+    id: "x402_settlement_demo_001",
+    resourceId: "res_research_agent_alpha",
+    payerAddress: "demo-payer-wallet",
+    recipientAddress: "11111111111111111111111111111111",
+    amountUsdc: 18.75,
+    memo: "x402:BRIDLE:Research Agent Alpha:usage-settlement",
+    status: "draft",
+    usdcMint: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    network: "devnet",
+    createdAt: "2026-06-23T15:00:00.000Z",
+    updatedAt: "2026-06-23T15:00:00.000Z"
+  }
+];
+
 export const initialState: BridleState = {
   user: demoUser,
   wallet: {
@@ -544,6 +561,7 @@ export const initialState: BridleState = {
       createdAt: "2026-06-22T18:40:00.000Z"
     }
   ],
+  x402Settlements: seededX402Settlements,
   healthChecks: seededResources.map((resource, index) => ({
     id: `health_${resource.id}`,
     resourceId: resource.id,

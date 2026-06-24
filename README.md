@@ -19,7 +19,7 @@
 
 BRIDLE is a control layer for fragmented digital resources.
 
-It gives idle or scattered assets a shared identity, health model, route graph, usage meter, and economic surface. The MVP lets an operator register resources, classify them, connect them into flows, expose them to a marketplace, track usage, estimate earnings, and route payouts through a Solana-first wallet page.
+It gives idle or scattered assets a shared identity, health model, route graph, usage meter, and economic surface. The MVP lets an operator register resources, classify them, connect them into flows, expose them to a marketplace, track usage, estimate earnings, and settle usage through wallet-signed Solana USDC transfers.
 
 The product language is intentionally tied to the name:
 
@@ -49,8 +49,8 @@ It is used in this README and wired into app metadata/Open Graph. If you want th
 | Resource Detail | Metadata, health, usage, monetization settings, route relationships, heartbeat simulation |
 | Orchestration | React Flow graph for conceptual resource routing |
 | Marketplace | Public/monetized resource explorer with pricing and availability |
-| Analytics | Usage charts, earnings estimates, compute usage, uptime, error rate, payouts |
-| Wallet | Solana wallet adapter, address display, balance, payout records |
+| Analytics | Usage charts, earnings estimates, compute usage, uptime, error rate, x402 settlements |
+| Wallet | Solana wallet adapter, address display, balance, real USDC transfer settlement |
 | Settings | Profile, UI preferences, API keys, security settings, demo reset |
 | Admin | Heartbeats, audit logs, degraded resources, production hardening notes |
 | Docs/API | Developer-facing API examples and terminology |
@@ -102,7 +102,7 @@ src/
     orchestration/       Route graph
     marketplace/         Public resource explorer
     analytics/           Usage and earnings
-    wallet/              Solana-first payout page
+    wallet/              x402 USDC settlement page
     docs/                Developer documentation
   components/
     ui/                  Button, card, badge primitives
@@ -144,6 +144,9 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_SOLANA_NETWORK=devnet
+NEXT_PUBLIC_SOLANA_USDC_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
+NEXT_PUBLIC_BRIDLE_USDC_RECIPIENT=
 ```
 
 ## Scripts
@@ -261,6 +264,7 @@ The database schema is in `supabase/schema.sql` and includes:
 - `usage_events`
 - `earnings_records`
 - `payouts`
+- `x402_settlements`
 - `health_checks`
 - `api_keys`
 - `audit_logs`
@@ -356,6 +360,44 @@ The MVP scoring function weighs:
 
 Production deployments should move the five-minute scheduler to a server cron, queue, or edge function and persist route changes in `auto_routes` plus `route_reallocations`.
 
+## x402 USDC settlement
+
+BRIDLE replaces placeholder credits with wallet-signed Solana USDC transfers. The Wallet page builds a real SPL token transaction using the connected wallet:
+
+- derives payer and recipient associated token accounts
+- creates token accounts idempotently if missing
+- sends a checked USDC transfer
+- attaches an x402 memo
+- confirms the transaction and stores status/signature in `x402_settlements`
+
+The default devnet USDC mint is:
+
+```text
+4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
+```
+
+Set `NEXT_PUBLIC_SOLANA_USDC_MINT` to the mainnet USDC mint for mainnet deployments:
+
+```text
+EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+```
+
+The transaction builder lives in `src/lib/solana-usdc.ts`:
+
+```ts
+const transaction = buildX402UsdcTransfer({
+  payer: publicKey,
+  recipient: new PublicKey(recipientAddress),
+  amountUsdc: 12.5,
+  memo: "x402:BRIDLE:Research Agent Alpha:USDC",
+  usdcMint: new PublicKey(process.env.NEXT_PUBLIC_SOLANA_USDC_MINT!)
+});
+
+const signature = await sendTransaction(transaction, connection);
+```
+
+Production hardening should verify x402 payment requirements server-side before unlocking paid resources, then reconcile confirmed signatures against `x402_settlements`.
+
 ## Orchestration model
 
 BRIDLE supports both low-level graph relationships and saved executable flows. Relationships are directed edges:
@@ -447,7 +489,8 @@ npm run build
 - Implement API proxy execution with request validation, metering, retries, and per-route quotas.
 - Add worker heartbeat ingestion for GPU and PC resources.
 - Use durable queues for orchestration jobs and health checks.
-- Integrate audited Solana settlement flows for payouts.
+- Verify x402 payment requirements server-side before unlocking paid resources.
+- Reconcile confirmed Solana USDC signatures against `x402_settlements`.
 - Add end-to-end tests for signup, resource registration, route creation, wallet connection, and routing.
 - Replace deterministic classification with a provider-backed classifier when an API key is configured.
 - Add per-resource billing policies, payout holds, and marketplace abuse controls.

@@ -172,6 +172,22 @@ export type Payout = {
   createdAt: string;
 };
 
+export type X402Settlement = {
+  id: string;
+  resourceId?: string;
+  payerAddress?: string;
+  recipientAddress: string;
+  amountUsdc: number;
+  memo: string;
+  status: "draft" | "pending-signature" | "submitted" | "confirmed" | "failed";
+  signature?: string;
+  usdcMint: string;
+  network: "devnet" | "mainnet-beta";
+  createdAt: string;
+  updatedAt: string;
+  error?: string;
+};
+
 export type HealthCheck = {
   id: string;
   resourceId: string;
@@ -227,6 +243,7 @@ export type BridleState = {
   usageEvents: UsageEvent[];
   earnings: EarningsRecord[];
   payouts: Payout[];
+  x402Settlements: X402Settlement[];
   healthChecks: HealthCheck[];
   apiKeys: ApiKey[];
   auditLogs: AuditLog[];

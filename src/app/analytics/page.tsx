@@ -9,11 +9,14 @@ import { useBridle } from "@/lib/store";
 import { formatCurrency, summarizeResources } from "@/lib/utils";
 
 export default function AnalyticsPage() {
-  const { resources, usageEvents, payouts, earnings } = useBridle();
+  const { resources, usageEvents, x402Settlements, earnings } = useBridle();
   const summary = summarizeResources(resources);
   const topResources = [...resources].sort((a, b) => b.earningsEstimate - a.earningsEstimate).slice(0, 5);
   const errorRate = resources.length ? resources.reduce((total, resource) => total + resource.usage.errorRate, 0) / resources.length : 0;
   const computeHours = resources.reduce((total, resource) => total + resource.usage.computeHours, 0);
+  const confirmedUsdc = x402Settlements
+    .filter((settlement) => settlement.status === "confirmed")
+    .reduce((total, settlement) => total + settlement.amountUsdc, 0);
 
   return (
     <AppShell title="Analytics" kicker="metering, uptime, and value estimates">
@@ -52,7 +55,7 @@ export default function AnalyticsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Payout history</CardTitle>
+            <CardTitle>x402 settlements</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="border border-white/20 p-3">
@@ -62,13 +65,17 @@ export default function AnalyticsPage() {
               </div>
               <div className="font-pixel text-xl text-white">{errorRate.toFixed(2)}%</div>
             </div>
-            {payouts.map((payout) => (
-              <div className="border border-white/20 p-3 text-sm" key={payout.id}>
+            <div className="border border-white/20 p-3">
+              <div className="text-xs uppercase tracking-[0.2em] text-zinc-500">confirmed USDC</div>
+              <div className="mt-2 font-pixel text-xl text-white">{confirmedUsdc.toFixed(2)} USDC</div>
+            </div>
+            {x402Settlements.map((settlement) => (
+              <div className="border border-white/20 p-3 text-sm" key={settlement.id}>
                 <div className="flex justify-between gap-3">
-                  <span className="text-zinc-400">{payout.txSignature}</span>
-                  <span className="font-pixel text-xs text-white">{formatCurrency(payout.amountUsd)}</span>
+                  <span className="break-all text-zinc-400">{settlement.signature || settlement.memo}</span>
+                  <span className="font-pixel text-xs text-white">{settlement.amountUsdc.toFixed(2)} USDC</span>
                 </div>
-                <div className="mt-2 text-xs uppercase tracking-[0.18em] text-zinc-500">{payout.status}</div>
+                <div className="mt-2 text-xs uppercase tracking-[0.18em] text-zinc-500">{settlement.status}</div>
               </div>
             ))}
             {earnings.slice(0, 3).map((earning) => (

@@ -137,6 +137,23 @@ create table public.payouts (
   created_at timestamptz not null default now()
 );
 
+create table public.x402_settlements (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.users(id) on delete cascade,
+  resource_id uuid references public.resources(id) on delete set null,
+  payer_address text,
+  recipient_address text not null,
+  amount_usdc numeric not null,
+  memo text not null,
+  status text not null default 'draft',
+  signature text,
+  usdc_mint text not null,
+  network text not null default 'devnet',
+  error text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table public.health_checks (
   id uuid primary key default gen_random_uuid(),
   resource_id uuid references public.resources(id) on delete cascade,
@@ -195,6 +212,7 @@ alter table public.route_reallocations enable row level security;
 alter table public.usage_events enable row level security;
 alter table public.earnings_records enable row level security;
 alter table public.payouts enable row level security;
+alter table public.x402_settlements enable row level security;
 alter table public.health_checks enable row level security;
 alter table public.api_keys enable row level security;
 alter table public.audit_logs enable row level security;
