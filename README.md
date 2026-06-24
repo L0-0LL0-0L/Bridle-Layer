@@ -35,7 +35,13 @@ The repository profile/logo asset lives at:
 public/bridle-profile.svg
 ```
 
-It is used in this README and wired into app metadata/Open Graph. If you want the GitHub repository social preview to match it, upload this asset from the GitHub repository settings page.
+The GitHub social-preview asset lives at:
+
+```text
+public/github-social-preview.svg
+```
+
+It is wired into app Open Graph metadata. GitHub's repository image itself is controlled in GitHub repository settings, so upload `public/github-social-preview.svg` from **Settings -> General -> Social preview** to make the repo card use this image.
 
 ## MVP surface area
 

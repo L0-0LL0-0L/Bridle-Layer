@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "BRIDLE",
     description: "Bind idle systems into one living programmable network.",
-    images: ["/bridle-profile.svg"]
+    images: ["/github-social-preview.svg"]
   }
 };
 
