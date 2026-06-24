@@ -3,11 +3,15 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { initialState } from "@/lib/seed";
 import type {
+  AutoRoute,
   BridleState,
   FlowRun,
   FlowStepTrace,
   FlowStep,
   OrchestrationFlow,
+  RouteReallocation,
+  RouteScoreBreakdown,
+  RouteVenue,
   Resource,
   ResourceConnection,
   ResourceDraft,
@@ -36,11 +40,13 @@ type BridleStore = BridleState & {
     steps: Array<Pick<FlowStep, "resourceId" | "verb">>;
   }) => OrchestrationFlow;
   runFlow: (flowId: string) => FlowRun | null;
+  reallocateRoutes: () => RouteReallocation;
   connectWallet: (address: string, balanceSol?: number) => void;
   resetDemo: () => void;
 };
 
 const storageKey = "bridle.state.v1";
+const reallocationIntervalMs = 5 * 60 * 1000;
 
 const StoreContext = createContext<BridleStore | undefined>(undefined);
 
@@ -48,8 +54,204 @@ function normalizeState(state: BridleState): BridleState {
   return {
     ...initialState,
     ...state,
+    venues: state.venues || initialState.venues,
+    autoRoutes: state.autoRoutes || initialState.autoRoutes,
+    routeReallocations: state.routeReallocations || initialState.routeReallocations,
     flows: state.flows || initialState.flows,
     flowRuns: state.flowRuns || initialState.flowRuns
+  };
+}
+
+function clampScore(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function pricingScore(resource: Resource) {
+  const byMode: Record<Resource["pricingMode"], number> = {
+    internal: 92,
+    free: 96,
+    metered: 84,
+    subscription: 78,
+    settlement: 90
+  };
+  const visibilityBonus = resource.visibility === "public" || resource.visibility === "monetized" ? 5 : 0;
+
+  return clampScore(byMode[resource.pricingMode] + visibilityBonus);
+}
+
+function healthScore(resource: Resource) {
+  const statusScore: Record<Resource["status"], number> = {
+    active: 100,
+    degraded: 66,
+    pending: 54,
+    offline: 0
+  };
+
+  return clampScore(statusScore[resource.status] * 0.55 + resource.usage.uptime * 0.45);
+}
+
+function latencyScore(resource: Resource, venue: RouteVenue) {
+  if (resource.status === "offline") {
+    return 0;
+  }
+
+  const latency = resource.usage.latencyMs || venue.latencyTargetMs;
+  if (latency <= venue.latencyTargetMs) {
+    return clampScore(100 - (latency / Math.max(venue.latencyTargetMs, 1)) * 10);
+  }
+
+  return clampScore(100 - ((latency - venue.latencyTargetMs) / Math.max(venue.latencyTargetMs, 1)) * 70);
+}
+
+function reliabilityScore(resource: Resource, venue: RouteVenue) {
+  if (resource.status === "offline") {
+    return 0;
+  }
+
+  const errorRatio = resource.usage.errorRate / Math.max(venue.maxErrorRate, 0.1);
+  return clampScore(100 - errorRatio * 34);
+}
+
+function fitScore(resource: Resource, venue: RouteVenue) {
+  return venue.requiredTypes.includes(resource.type) ? 100 : 0;
+}
+
+function scoreResourceForVenue(resource: Resource, venue: RouteVenue) {
+  const scoreBreakdown: RouteScoreBreakdown = {
+    health: healthScore(resource),
+    latency: latencyScore(resource, venue),
+    reliability: reliabilityScore(resource, venue),
+    cost: pricingScore(resource),
+    fit: fitScore(resource, venue)
+  };
+
+  const score = clampScore(
+    scoreBreakdown.health * 0.25 +
+      scoreBreakdown.latency * 0.2 +
+      scoreBreakdown.reliability * 0.2 +
+      scoreBreakdown.cost * 0.15 +
+      scoreBreakdown.fit * 0.2
+  );
+
+  return {
+    score,
+    scoreBreakdown
+  };
+}
+
+function routeReason(resource: Resource, venue: RouteVenue, score: number) {
+  if (resource.status === "offline") {
+    return "Resource offline; blocked until heartbeat returns.";
+  }
+
+  if (resource.status === "degraded") {
+    return "Resource matches venue but degraded health reduced allocation.";
+  }
+
+  if (score >= 90) {
+    return `Strong ${resource.type} fit for ${venue.name} with healthy telemetry.`;
+  }
+
+  if (score >= 70) {
+    return "Eligible route with acceptable score and venue fit.";
+  }
+
+  return "Kept on standby because score is below the live allocation threshold.";
+}
+
+function applyRouteReallocation(current: BridleState): { state: BridleState; reallocation: RouteReallocation } {
+  const started = Date.now();
+  const ranAt = new Date(started).toISOString();
+  const nextRunAt = new Date(started + reallocationIntervalMs).toISOString();
+  const nextRoutes: AutoRoute[] = current.venues.flatMap((venue) => {
+    if (venue.status === "paused") {
+      return [];
+    }
+
+    const candidates = current.resources
+      .filter((resource) => venue.requiredTypes.includes(resource.type))
+      .map((resource) => ({
+        resource,
+        ...scoreResourceForVenue(resource, venue)
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+
+    const allocationPool = candidates.filter((candidate) => candidate.score >= 45 && candidate.resource.status !== "offline");
+    const scoreTotal = allocationPool.reduce((total, candidate) => total + candidate.score, 0);
+
+    return candidates.map((candidate) => {
+      const allocationPercent =
+        scoreTotal > 0 && candidate.score >= 45 && candidate.resource.status !== "offline"
+          ? Math.round((candidate.score / scoreTotal) * 100)
+          : 0;
+      const status: AutoRoute["status"] =
+        candidate.resource.status === "offline" || candidate.score < 45
+          ? "blocked"
+          : candidate.score >= 70
+            ? "live"
+            : "standby";
+
+      return {
+        id: `route_${venue.id}_${candidate.resource.id}`,
+        venueId: venue.id,
+        resourceId: candidate.resource.id,
+        score: candidate.score,
+        allocationPercent,
+        status,
+        reason: routeReason(candidate.resource, venue, candidate.score),
+        scoreBreakdown: candidate.scoreBreakdown,
+        lastScoredAt: ranAt,
+        nextReallocationAt: nextRunAt
+      };
+    });
+  });
+
+  const previousById = new Map(current.autoRoutes.map((route) => [route.id, route]));
+  const routesChanged = nextRoutes.filter((route) => {
+    const previous = previousById.get(route.id);
+    return !previous || previous.status !== route.status || previous.allocationPercent !== route.allocationPercent || previous.score !== route.score;
+  }).length;
+
+  const reallocation: RouteReallocation = {
+    id: makeId("realloc"),
+    ranAt,
+    nextRunAt,
+    durationMs: Math.max(1, Date.now() - started),
+    routesChanged,
+    summary: `Scored ${current.resources.length} resources against ${current.venues.length} venues; ${routesChanged} route rows changed.`
+  };
+
+  return {
+    state: {
+      ...current,
+      autoRoutes: nextRoutes,
+      routeReallocations: [reallocation, ...current.routeReallocations].slice(0, 20),
+      auditLogs: [
+        {
+          id: makeId("audit"),
+          actor: "BRIDLE auto-router",
+          action: "reallocated routes",
+          target: `${routesChanged} changes`,
+          createdAt: ranAt
+        },
+        ...current.auditLogs
+      ],
+      notifications:
+        routesChanged > 0
+          ? [
+              {
+                id: makeId("note"),
+                title: "Routes reallocated",
+                body: reallocation.summary,
+                severity: "info",
+                createdAt: ranAt
+              },
+              ...current.notifications
+            ]
+          : current.notifications
+    },
+    reallocation
   };
 }
 
@@ -185,6 +387,18 @@ export function BridleProvider({ children }: { children: ReactNode }) {
       window.localStorage.setItem(storageKey, JSON.stringify(state));
     }
   }, [hydrated, state]);
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setState((current) => applyRouteReallocation(current).state);
+    }, reallocationIntervalMs);
+
+    return () => window.clearInterval(interval);
+  }, [hydrated]);
 
   const value = useMemo<BridleStore>(
     () => ({
@@ -379,6 +593,11 @@ export function BridleProvider({ children }: { children: ReactNode }) {
         }));
 
         return run;
+      },
+      reallocateRoutes: () => {
+        const { state: nextState, reallocation } = applyRouteReallocation(state);
+        setState(nextState);
+        return reallocation;
       },
       connectWallet: (address, balanceSol = 0) => {
         setState((current) => {

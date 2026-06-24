@@ -43,7 +43,7 @@ It is used in this README and wired into app metadata/Open Graph. If you want th
 | --- | --- |
 | Landing page | Pixel-art BRIDLE brand, hero, resource categories, product explanation, CTAs |
 | Auth | Demo login/signup flow with local persistence and Supabase-ready architecture |
-| Dashboard | Resource counts, active/offline state, usage, earnings, notifications, route activity |
+| Dashboard | Resource counts, active/offline state, usage, earnings, notifications, live auto-routing |
 | Add Resource | Guided wizard for type, connection details, classification, visibility, activation |
 | Registry | Searchable/filterable canonical list of all bound resources |
 | Resource Detail | Metadata, health, usage, monetization settings, route relationships, heartbeat simulation |
@@ -255,6 +255,9 @@ The database schema is in `supabase/schema.sql` and includes:
 - `resource_connections`
 - `orchestration_flows`
 - `flow_runs`
+- `route_venues`
+- `auto_routes`
+- `route_reallocations`
 - `usage_events`
 - `earnings_records`
 - `payouts`
@@ -299,6 +302,59 @@ on public.resources
 for select
 using (owner_id = auth.uid());
 ```
+
+## Auto-router model
+
+BRIDLE includes an Auto-router MVP that scores resources against routing venues and reallocates every five minutes in the local runtime. The dashboard shows the live routes table, score breakdowns, allocation percentages, last run, next run, and a manual reroute control.
+
+Venues describe demand and constraints:
+
+```ts
+type RouteVenue = {
+  id: string;
+  name: string;
+  type: "agent-workload" | "api-proxy" | "compute" | "data" | "settlement";
+  requiredTypes: ResourceType[];
+  demandUnits: number;
+  priority: number;
+  latencyTargetMs: number;
+  maxErrorRate: number;
+  status: "open" | "saturated" | "paused";
+};
+```
+
+Routes are scored rows between venues and resources:
+
+```ts
+type AutoRoute = {
+  id: string;
+  venueId: string;
+  resourceId: string;
+  score: number;
+  allocationPercent: number;
+  status: "live" | "standby" | "blocked";
+  reason: string;
+  scoreBreakdown: {
+    health: number;
+    latency: number;
+    reliability: number;
+    cost: number;
+    fit: number;
+  };
+  lastScoredAt: string;
+  nextReallocationAt: string;
+};
+```
+
+The MVP scoring function weighs:
+
+- resource health and uptime
+- latency against the venue target
+- error rate against the venue max
+- cost/access mode
+- type fit against venue requirements
+
+Production deployments should move the five-minute scheduler to a server cron, queue, or edge function and persist route changes in `auto_routes` plus `route_reallocations`.
 
 ## Orchestration model
 
