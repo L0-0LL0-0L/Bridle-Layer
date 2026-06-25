@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResourceTypeBadge, StatusBadge } from "@/components/retro";
 import { useBridle } from "@/lib/store";
 import type { ResourceType } from "@/lib/types";
+import { listMarketplace } from "@/lib/marketplace";
 import { formatCompact, resourceTypeLabel } from "@/lib/utils";
 
 const filters: ("all" | ResourceType)[] = ["all", "ai-agent", "api", "gpu", "pc-worker", "wallet", "dataset"];
@@ -20,12 +21,11 @@ export default function MarketplacePage() {
 
   const listings = useMemo(
     () =>
-      marketplace
-        .map((listing) => ({
-          listing,
-          resource: resources.find((resource) => resource.id === listing.resourceId)
-        }))
-        .filter((item) => item.resource && (filter === "all" || item.resource.type === filter)),
+      listMarketplace({
+        listings: marketplace,
+        resources,
+        type: filter
+      }),
     [filter, marketplace, resources]
   );
 
@@ -61,8 +61,7 @@ export default function MarketplacePage() {
       </Card>
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {listings.map(({ listing, resource }) =>
-          resource ? (
+        {listings.map(({ listing, resource }) => (
             <Card className={listing.featured ? "border-white shadow-[12px_12px_0_rgba(255,255,255,0.16)]" : ""} key={listing.id}>
               <CardHeader>
                 <div>
@@ -92,12 +91,11 @@ export default function MarketplacePage() {
                 </div>
                 <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4 text-xs uppercase tracking-[0.18em] text-zinc-500">
                   <span>usage</span>
-                  <span className="font-pixel text-white">{formatCompact(resource.usage.requests)}</span>
+                  <span className="font-pixel text-white">{formatCompact(resource.usageRequests)}</span>
                 </div>
               </CardContent>
             </Card>
-          ) : null
-        )}
+        ))}
       </div>
     </AppShell>
   );
