@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/bridle-profile.svg" alt="BRIDLE profile picture" width="220" />
+  <img src="public/bridle-readme-banner.jpeg" alt="BRIDLE the stack banner" width="900" />
 </p>
 
 <h1 align="center">BRIDLE</h1>
