@@ -3,6 +3,7 @@ import { ArrowRight, Cpu, Database, Link2, Server, WalletCards, Workflow } from 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MascotSigil, PixelSeparator, StatCard } from "@/components/retro";
+import { ContractAddress } from "@/components/contract-address";
 
 const resourceBlocks = [
   ["AI Agents", Workflow, "Register external agents, tools, capabilities, and pricing modes."],
@@ -28,6 +29,7 @@ export default function LandingPage() {
             BRIDLE reins in AI agents, GPUs, APIs, PCs, wallets, and datasets, then turns scattered digital assets into
             one programmable network for routing, management, and monetization.
           </p>
+          <ContractAddress />
           <div className="mt-8 flex flex-wrap gap-4">
             <Button asChild size="lg">
               <Link href="/dashboard">
