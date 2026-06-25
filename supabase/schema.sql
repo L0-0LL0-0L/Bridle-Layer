@@ -52,6 +52,20 @@ create table public.earnings_tickers (
   updated_at timestamptz not null default now()
 );
 
+create table public.token_gates (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.users(id) on delete cascade,
+  token_symbol text not null default '$BRIDLE',
+  mint_address text not null,
+  holder_address text,
+  balance numeric not null default 0,
+  min_balance numeric not null default 1000,
+  priority_boost integer not null default 12,
+  status text not null default 'unverified',
+  verified_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+
 create table public.resources (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid references public.users(id) on delete cascade,
@@ -237,6 +251,7 @@ alter table public.wallets enable row level security;
 alter table public.membership_tiers enable row level security;
 alter table public.stake_positions enable row level security;
 alter table public.earnings_tickers enable row level security;
+alter table public.token_gates enable row level security;
 alter table public.resources enable row level security;
 alter table public.resource_connections enable row level security;
 alter table public.orchestration_flows enable row level security;

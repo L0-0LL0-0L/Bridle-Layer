@@ -265,6 +265,7 @@ The database schema is in `supabase/schema.sql` and includes:
 - `membership_tiers`
 - `stake_positions`
 - `earnings_tickers`
+- `token_gates`
 - `resources`
 - `resource_connections`
 - `orchestration_flows`
@@ -345,6 +346,16 @@ The current implementation is an MVP ledger for BRDL locks. Production staking s
 
 BRIDLE includes an Auto-router MVP that scores resources against routing venues and reallocates every five minutes in the local runtime. The dashboard shows the live routes table, score breakdowns, allocation percentages, last run, next run, and a manual reroute control.
 
+Token-gated router priority is unlocked for verified `$BRIDLE` holders:
+
+```text
+$BRIDLE mint = 4i52FSf22KYBU8424Z2AGmJNG299jQhxM74YK1Espump
+minimum holder balance = 1,000 $BRIDLE
+holder priority boost = +12 route priority units
+```
+
+The Wallet page can verify a connected wallet by reading SPL token accounts for the `$BRIDLE` mint. When the holder gate is active, the auto-router adds a `holder` score component and recalculates route allocations.
+
 The public `/network` page exposes the venue directory:
 
 - browse venues by accepted resource type
@@ -394,6 +405,7 @@ type AutoRoute = {
     reliability: number;
     cost: number;
     fit: number;
+    holder: number;
   };
   lastScoredAt: string;
   nextReallocationAt: string;
@@ -407,6 +419,7 @@ The MVP scoring function weighs:
 - error rate against the venue max
 - cost/access mode
 - type fit against venue requirements
+- `$BRIDLE` holder gate priority
 
 Production deployments should move the five-minute scheduler to a server cron, queue, or edge function and persist route changes in `auto_routes` plus `route_reallocations`.
 

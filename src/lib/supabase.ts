@@ -23,6 +23,7 @@ export const supabaseTables = {
   membershipTiers: "membership_tiers",
   stakePositions: "stake_positions",
   earningsTickers: "earnings_tickers",
+  tokenGates: "token_gates",
   resources: "resources",
   resourceConnections: "resource_connections",
   routeVenues: "route_venues",

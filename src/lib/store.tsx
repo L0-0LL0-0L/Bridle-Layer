@@ -18,6 +18,7 @@ import type {
   ResourceConnection,
   ResourceDraft,
   StakePosition,
+  TokenGate,
   User,
   Wallet,
   X402Settlement
@@ -61,6 +62,7 @@ type BridleStore = BridleState & {
     patch: Pick<Partial<X402Settlement>, "status" | "signature" | "payerAddress" | "error">
   ) => void;
   connectWallet: (address: string, balanceSol?: number) => void;
+  updateTokenGate: (gate: Pick<TokenGate, "holderAddress" | "balance" | "status" | "verifiedAt">) => void;
   resetDemo: () => void;
 };
 
@@ -74,6 +76,7 @@ function normalizeState(state: BridleState): BridleState {
   return {
     ...initialState,
     ...state,
+    tokenGate: state.tokenGate || initialState.tokenGate,
     membershipTiers: state.membershipTiers || initialState.membershipTiers,
     stakePositions: state.stakePositions || initialState.stakePositions,
     earningsTicker: state.earningsTicker || initialState.earningsTicker,
@@ -179,13 +182,22 @@ function fitScore(resource: Resource, venue: RouteVenue) {
   return venue.requiredTypes.includes(resource.type) ? 100 : 0;
 }
 
-function scoreResourceForVenue(resource: Resource, venue: RouteVenue) {
+function holderScore(tokenGate: TokenGate) {
+  if (tokenGate.status !== "active") {
+    return 0;
+  }
+
+  return clampScore(Math.min(tokenGate.priorityBoost, 20) * 5);
+}
+
+function scoreResourceForVenue(resource: Resource, venue: RouteVenue, tokenGate: TokenGate) {
   const scoreBreakdown: RouteScoreBreakdown = {
     health: healthScore(resource),
     latency: latencyScore(resource, venue),
     reliability: reliabilityScore(resource, venue),
     cost: pricingScore(resource),
-    fit: fitScore(resource, venue)
+    fit: fitScore(resource, venue),
+    holder: holderScore(tokenGate)
   };
 
   const score = clampScore(
@@ -193,7 +205,8 @@ function scoreResourceForVenue(resource: Resource, venue: RouteVenue) {
       scoreBreakdown.latency * 0.2 +
       scoreBreakdown.reliability * 0.2 +
       scoreBreakdown.cost * 0.15 +
-      scoreBreakdown.fit * 0.2
+      scoreBreakdown.fit * 0.15 +
+      scoreBreakdown.holder * 0.05
   );
 
   return {
@@ -202,7 +215,7 @@ function scoreResourceForVenue(resource: Resource, venue: RouteVenue) {
   };
 }
 
-function routeReason(resource: Resource, venue: RouteVenue, score: number) {
+function routeReason(resource: Resource, venue: RouteVenue, score: number, tokenGate: TokenGate) {
   if (resource.status === "offline") {
     return "Resource offline; blocked until heartbeat returns.";
   }
@@ -212,7 +225,9 @@ function routeReason(resource: Resource, venue: RouteVenue, score: number) {
   }
 
   if (score >= 90) {
-    return `Strong ${resource.type} fit for ${venue.name} with healthy telemetry.`;
+    return tokenGate.status === "active"
+      ? `Strong ${resource.type} fit for ${venue.name}; $BRIDLE holder gate added priority boost.`
+      : `Strong ${resource.type} fit for ${venue.name} with healthy telemetry.`;
   }
 
   if (score >= 70) {
@@ -235,7 +250,7 @@ function applyRouteReallocation(current: BridleState): { state: BridleState; rea
       .filter((resource) => venue.requiredTypes.includes(resource.type))
       .map((resource) => ({
         resource,
-        ...scoreResourceForVenue(resource, venue)
+        ...scoreResourceForVenue(resource, venue, current.tokenGate)
       }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 3);
@@ -262,7 +277,7 @@ function applyRouteReallocation(current: BridleState): { state: BridleState; rea
         score: candidate.score,
         allocationPercent,
         status,
-        reason: routeReason(candidate.resource, venue, candidate.score),
+        reason: routeReason(candidate.resource, venue, candidate.score, current.tokenGate),
         scoreBreakdown: candidate.scoreBreakdown,
         lastScoredAt: ranAt,
         nextReallocationAt: nextRunAt
@@ -282,7 +297,7 @@ function applyRouteReallocation(current: BridleState): { state: BridleState; rea
     nextRunAt,
     durationMs: Math.max(1, Date.now() - started),
     routesChanged,
-    summary: `Scored ${current.resources.length} resources against ${current.venues.length} venues; ${routesChanged} route rows changed.`
+    summary: `Scored ${current.resources.length} resources against ${current.venues.length} venues; ${routesChanged} route rows changed. Holder gate: ${current.tokenGate.status}.`
   };
 
   return {
@@ -825,6 +840,46 @@ export function BridleProvider({ children }: { children: ReactNode }) {
                 createdAt: nowIso()
               },
               ...current.notifications
+            ]
+          };
+        });
+      },
+      updateTokenGate: (gate) => {
+        setState((current) => {
+          const tokenGate: TokenGate = {
+            ...current.tokenGate,
+            ...gate
+          };
+          const { state: routedState } = applyRouteReallocation({
+            ...current,
+            tokenGate
+          });
+
+          return {
+            ...routedState,
+            tokenGate,
+            auditLogs: [
+              {
+                id: makeId("audit"),
+                actor: current.user?.name || "BRIDLE holder gate",
+                action: "verified $BRIDLE holder gate",
+                target: `${tokenGate.balance.toLocaleString()} ${tokenGate.tokenSymbol} / ${tokenGate.status}`,
+                createdAt: gate.verifiedAt || nowIso()
+              },
+              ...routedState.auditLogs
+            ],
+            notifications: [
+              {
+                id: makeId("note"),
+                title: tokenGate.status === "active" ? "$BRIDLE priority unlocked" : "$BRIDLE priority locked",
+                body:
+                  tokenGate.status === "active"
+                    ? `${tokenGate.balance.toLocaleString()} $BRIDLE detected. Auto-router priority boost is active.`
+                    : `Hold at least ${tokenGate.minBalance.toLocaleString()} $BRIDLE to unlock router priority.`,
+                severity: tokenGate.status === "active" ? "success" : "warning",
+                createdAt: gate.verifiedAt || nowIso()
+              },
+              ...routedState.notifications
             ]
           };
         });

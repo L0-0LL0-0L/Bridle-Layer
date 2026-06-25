@@ -4,13 +4,14 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
-import { CircleDollarSign, Send, WalletCards } from "lucide-react";
+import { CircleDollarSign, Send, ShieldCheck, WalletCards } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { CurrencyLine, StatCard } from "@/components/retro";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useBridle } from "@/lib/store";
+import { BRIDLE_HOLDER_MIN_BALANCE, BRIDLE_TOKEN_MINT, getBridleTokenBalance } from "@/lib/bridle-token";
 import { buildX402UsdcTransfer, configuredSolanaNetwork, configuredUsdcMint } from "@/lib/solana-usdc";
 import { cn, resourceTypeLabel } from "@/lib/utils";
 import type { X402Settlement } from "@/lib/types";
@@ -28,14 +29,25 @@ function settlementTone(status: X402Settlement["status"]) {
 export default function WalletPage() {
   const { connection } = useConnection();
   const { publicKey, connected, sendTransaction } = useWallet();
-  const { wallet, resources, x402Settlements, connectWallet, createX402Settlement, markX402Settlement } = useBridle();
+  const {
+    wallet,
+    resources,
+    x402Settlements,
+    tokenGate,
+    connectWallet,
+    createX402Settlement,
+    markX402Settlement,
+    updateTokenGate
+  } = useBridle();
   const [liveBalance, setLiveBalance] = useState<number | null>(null);
   const [recipientAddress, setRecipientAddress] = useState("");
   const [amountUsdc, setAmountUsdc] = useState("1.25");
   const [selectedResourceId, setSelectedResourceId] = useState(resources[0]?.id || "");
   const [memo, setMemo] = useState("x402:BRIDLE:resource-settlement");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isVerifyingHolder, setIsVerifyingHolder] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [holderError, setHolderError] = useState<string | null>(null);
   const connectWalletRef = useRef(connectWallet);
   const usdcMint = configuredUsdcMint();
   const solanaNetwork = configuredSolanaNetwork();
@@ -67,6 +79,36 @@ export default function WalletPage() {
     .filter((settlement) => settlement.status === "confirmed")
     .reduce((total, settlement) => total + settlement.amountUsdc, 0);
   const selectedResource = resources.find((resource) => resource.id === selectedResourceId);
+
+  async function verifyBridleHoldings() {
+    setHolderError(null);
+
+    if (!publicKey || !connected) {
+      setHolderError("Connect a Solana wallet before verifying $BRIDLE holdings.");
+      return;
+    }
+
+    setIsVerifyingHolder(true);
+    try {
+      const balance = await getBridleTokenBalance(connection, publicKey);
+      updateTokenGate({
+        holderAddress: publicKey.toBase58(),
+        balance,
+        status: balance >= BRIDLE_HOLDER_MIN_BALANCE ? "active" : "insufficient",
+        verifiedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      updateTokenGate({
+        holderAddress: publicKey.toBase58(),
+        balance: 0,
+        status: "unverified",
+        verifiedAt: new Date().toISOString()
+      });
+      setHolderError(error instanceof Error ? error.message : "Unable to verify $BRIDLE holdings.");
+    } finally {
+      setIsVerifyingHolder(false);
+    }
+  }
 
   async function submitSettlement(event: FormEvent) {
     event.preventDefault();
@@ -195,6 +237,41 @@ export default function WalletPage() {
               <CurrencyLine label="mint" value={`${usdcMint.slice(0, 4)}...${usdcMint.slice(-4)}`} />
               <CurrencyLine label="x402 mode" value="wallet transfer" />
             </div>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>$BRIDLE holder gate</CardTitle>
+              <ShieldCheck className="h-5 w-5" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="border border-white/20 p-3">
+                  <div className="text-xs uppercase tracking-[0.2em] text-zinc-500">status</div>
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <Badge
+                      className={
+                        tokenGate.status === "active"
+                          ? "border-emerald-200/70 bg-emerald-400/10 text-emerald-200"
+                          : tokenGate.status === "insufficient"
+                            ? "border-yellow-100/70 bg-yellow-400/10 text-yellow-100"
+                            : "border-white/40 text-zinc-300"
+                      }
+                    >
+                      {tokenGate.status}
+                    </Badge>
+                    <span className="font-pixel text-xs text-white">{tokenGate.priorityBoost} boost</span>
+                  </div>
+                </div>
+                <CurrencyLine label="mint" value={`${BRIDLE_TOKEN_MINT.slice(0, 4)}...${BRIDLE_TOKEN_MINT.slice(-4)}`} />
+                <CurrencyLine label="balance" value={`${tokenGate.balance.toLocaleString()} $BRIDLE`} />
+                <CurrencyLine label="minimum" value={`${tokenGate.minBalance.toLocaleString()} $BRIDLE`} />
+                {holderError ? <div className="border border-red-200/60 p-3 text-xs text-red-100">{holderError}</div> : null}
+                <Button disabled={!connected || isVerifyingHolder} onClick={verifyBridleHoldings} type="button" variant="ghost">
+                  <ShieldCheck className="h-4 w-4" />
+                  {isVerifyingHolder ? "Verifying..." : "Verify holdings"}
+                </Button>
+              </div>
+            </CardContent>
           </Card>
         </div>
       </div>

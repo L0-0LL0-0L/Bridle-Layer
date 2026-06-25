@@ -36,6 +36,18 @@ export type EarningsTicker = {
   lastTickAt: string;
 };
 
+export type TokenGate = {
+  id: string;
+  tokenSymbol: "$BRIDLE";
+  mintAddress: string;
+  holderAddress?: string;
+  balance: number;
+  minBalance: number;
+  priorityBoost: number;
+  status: "unverified" | "active" | "insufficient";
+  verifiedAt?: string;
+};
+
 export type User = {
   id: string;
   name: string;
@@ -108,6 +120,7 @@ export type RouteScoreBreakdown = {
   reliability: number;
   cost: number;
   fit: number;
+  holder: number;
 };
 
 export type AutoRoute = {
@@ -261,6 +274,7 @@ export type Notification = {
 export type BridleState = {
   user: User | null;
   wallet: Wallet | null;
+  tokenGate: TokenGate;
   membershipTiers: MembershipTier[];
   stakePositions: StakePosition[];
   earningsTicker: EarningsTicker;

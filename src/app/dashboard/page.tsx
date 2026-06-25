@@ -56,6 +56,7 @@ export default function DashboardPage() {
     venues,
     autoRoutes,
     routeReallocations,
+    tokenGate,
     reallocateRoutes,
     membershipTiers,
     stakePositions,
@@ -243,6 +244,17 @@ export default function DashboardPage() {
               {venues.length} venues
             </Badge>
             {latestReallocation ? <Badge>{latestReallocation.routesChanged} changed</Badge> : null}
+            <Badge
+              className={
+                tokenGate.status === "active"
+                  ? "border-emerald-200/70 bg-emerald-400/10 text-emerald-200"
+                  : tokenGate.status === "insufficient"
+                    ? "border-yellow-100/70 bg-yellow-400/10 text-yellow-100"
+                    : "border-white/40 text-zinc-300"
+              }
+            >
+              {tokenGate.status === "active" ? `$BRIDLE +${tokenGate.priorityBoost}` : "$BRIDLE gated"}
+            </Badge>
             <Button onClick={() => reallocateRoutes()} size="sm" type="button" variant="ghost">
               <RotateCcw className="h-3 w-3" />
               Reroute
@@ -266,6 +278,14 @@ export default function DashboardPage() {
             <div className="border border-white/20 p-3">
               <div className="text-xs uppercase tracking-[0.2em] text-zinc-500">router summary</div>
               <div className="mt-2 text-xs leading-5 text-zinc-300">{latestReallocation?.summary || "Seeded routes active."}</div>
+            </div>
+            <div className="border border-white/20 p-3 md:col-span-3">
+              <div className="text-xs uppercase tracking-[0.2em] text-zinc-500">token-gated priority</div>
+              <div className="mt-2 text-xs leading-5 text-zinc-300">
+                {tokenGate.status === "active"
+                  ? `${tokenGate.balance.toLocaleString()} $BRIDLE verified for ${tokenGate.holderAddress}. Holder score component is active.`
+                  : `Hold at least ${tokenGate.minBalance.toLocaleString()} $BRIDLE to unlock holder priority scoring.`}
+              </div>
             </div>
           </div>
 
@@ -312,11 +332,11 @@ export default function DashboardPage() {
                         </div>
                       </td>
                       <td className="py-4 pr-4">
-                        <div className="grid grid-cols-5 gap-1 text-center text-[10px] uppercase tracking-[0.12em] text-zinc-500">
+                        <div className="grid grid-cols-6 gap-1 text-center text-[10px] uppercase tracking-[0.12em] text-zinc-500">
                           {Object.entries(route.scoreBreakdown).map(([label, value]) => (
                             <div className="border border-white/10 p-1" key={label}>
                               <div className="text-white">{value}</div>
-                              <div>{label[0]}</div>
+                              <div>{label === "holder" ? "tok" : label.slice(0, 3)}</div>
                             </div>
                           ))}
                         </div>
