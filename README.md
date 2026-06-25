@@ -32,7 +32,7 @@ The product language is intentionally tied to the name:
 The repository profile/logo asset lives at:
 
 ```text
-public/bridle-profile.svg
+public/bridle-repo-pfp.jpeg
 ```
 
 The GitHub social-preview asset lives at:
@@ -41,7 +41,7 @@ The GitHub social-preview asset lives at:
 public/github-social-preview.svg
 ```
 
-It is wired into app Open Graph metadata. GitHub's repository image itself is controlled in GitHub repository settings, so upload `public/github-social-preview.svg` from **Settings -> General -> Social preview** to make the repo card use this image.
+The profile image is wired into app Open Graph metadata. GitHub's repository image itself is controlled in GitHub repository settings, so upload `public/bridle-repo-pfp.jpeg` from **Settings -> General -> Social preview** if you want the GitHub repo card to use this exact image.
 
 ## MVP surface area
 
