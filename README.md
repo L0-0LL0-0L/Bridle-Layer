@@ -48,6 +48,7 @@ The profile image is wired into app Open Graph metadata. GitHub's repository ima
 | Area | What it does |
 | --- | --- |
 | Landing page | Pixel-art BRIDLE brand, hero, resource categories, product explanation, CTAs |
+| Demo Mode | Auto-loads seeded data, connects a demo wallet, lists a resource, and calls the marketplace |
 | Auth | Demo login/signup flow with local persistence and Supabase-ready architecture |
 | Dashboard | Resource counts, live auto-routing, membership staking, and per-second earnings ticker |
 | Add Resource | Guided wizard for type, connection details, classification, visibility, activation |
@@ -104,6 +105,7 @@ Examples included in seed data:
 src/
   app/
     api/                 Demo API boundaries
+    demo/                Autoplay seeded workflow
     dashboard/           Operator overview
     resources/           Registry, detail pages, add wizard
     orchestration/       Route graph

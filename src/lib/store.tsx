@@ -45,6 +45,8 @@ type BridleStore = BridleState & {
   }) => OrchestrationFlow;
   runFlow: (flowId: string) => FlowRun | null;
   reallocateRoutes: () => RouteReallocation;
+  loadDemoSeedData: () => void;
+  listResourceOnMarketplace: (resourceId: string) => void;
   lockMembershipTokens: (lockedTokens: number) => StakePosition;
   requestStakeUnlock: (stakeId: string) => void;
   createX402Settlement: (settlement: {
@@ -661,6 +663,78 @@ export function BridleProvider({ children }: { children: ReactNode }) {
         const { state: nextState, reallocation } = applyRouteReallocation(state);
         setState(nextState);
         return reallocation;
+      },
+      loadDemoSeedData: () => {
+        setState({
+          ...initialState,
+          notifications: [
+            {
+              id: makeId("note"),
+              title: "Demo mode loaded",
+              body: "Seeded resources, routes, venues, wallet, staking, and marketplace state are ready.",
+              severity: "success",
+              createdAt: nowIso()
+            },
+            ...initialState.notifications
+          ]
+        });
+      },
+      listResourceOnMarketplace: (resourceId) => {
+        setState((current) => {
+          const resource = current.resources.find((item) => item.id === resourceId);
+
+          if (!resource) {
+            return current;
+          }
+
+          const listingExists = current.marketplace.some((listing) => listing.resourceId === resourceId);
+          const marketplace = listingExists
+            ? current.marketplace
+            : [
+                {
+                  id: makeId("listing"),
+                  resourceId,
+                  availability: `${resource.usage.uptime.toFixed(1)}% live`,
+                  priceLabel: resource.pricingMode === "metered" ? "$0.012 / call" : resource.pricingMode,
+                  shortDescription: resource.description,
+                  featured: true
+                },
+                ...current.marketplace
+              ];
+
+          return {
+            ...current,
+            resources: current.resources.map((item) =>
+              item.id === resourceId
+                ? {
+                    ...item,
+                    visibility: item.visibility === "private" ? "public" : item.visibility
+                  }
+                : item
+            ),
+            marketplace,
+            auditLogs: [
+              {
+                id: makeId("audit"),
+                actor: current.user?.name || "BRIDLE demo",
+                action: "listed resource on marketplace",
+                target: resource.name,
+                createdAt: nowIso()
+              },
+              ...current.auditLogs
+            ],
+            notifications: [
+              {
+                id: makeId("note"),
+                title: "Resource listed",
+                body: `${resource.name} is available through the marketplace directory.`,
+                severity: "success",
+                createdAt: nowIso()
+              },
+              ...current.notifications
+            ]
+          };
+        });
       },
       lockMembershipTokens: (lockedTokens) => {
         const safeAmount = Math.max(0, Math.floor(lockedTokens));
