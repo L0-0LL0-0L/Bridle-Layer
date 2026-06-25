@@ -20,6 +20,38 @@ create table public.wallets (
   created_at timestamptz not null default now()
 );
 
+create table public.membership_tiers (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  min_locked_tokens numeric not null default 0,
+  earnings_multiplier numeric not null default 1,
+  unlock_days integer not null default 0,
+  description text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create table public.stake_positions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.users(id) on delete cascade,
+  tier_id uuid references public.membership_tiers(id) on delete set null,
+  locked_tokens numeric not null,
+  token_symbol text not null default 'BRDL',
+  status text not null default 'active',
+  locked_at timestamptz not null default now(),
+  unlock_available_at timestamptz not null
+);
+
+create table public.earnings_tickers (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.users(id) on delete cascade,
+  accrued_usdc numeric not null default 0,
+  base_usdc_per_second numeric not null default 0,
+  boosted_usdc_per_second numeric not null default 0,
+  multiplier numeric not null default 1,
+  last_tick_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table public.resources (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid references public.users(id) on delete cascade,
@@ -202,6 +234,9 @@ create table public.notifications (
 
 alter table public.users enable row level security;
 alter table public.wallets enable row level security;
+alter table public.membership_tiers enable row level security;
+alter table public.stake_positions enable row level security;
+alter table public.earnings_tickers enable row level security;
 alter table public.resources enable row level security;
 alter table public.resource_connections enable row level security;
 alter table public.orchestration_flows enable row level security;

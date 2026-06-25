@@ -1,12 +1,15 @@
 import type {
   AutoRoute,
   BridleState,
+  EarningsTicker,
   FlowRun,
+  MembershipTier,
   OrchestrationFlow,
   Resource,
   ResourceConnection,
   RouteReallocation,
   RouteVenue,
+  StakePosition,
   X402Settlement
 } from "@/lib/types";
 
@@ -187,6 +190,62 @@ export const seededResources: Resource[] = [
     lastHeartbeat: "2026-06-23T15:34:00.000Z"
   }
 ];
+
+export const seededMembershipTiers: MembershipTier[] = [
+  {
+    id: "tier_unbridled",
+    name: "Unbridled",
+    minLockedTokens: 0,
+    earningsMultiplier: 1,
+    unlockDays: 0,
+    description: "Base network access with no locked BRDL."
+  },
+  {
+    id: "tier_reined",
+    name: "Reined",
+    minLockedTokens: 1000,
+    earningsMultiplier: 1.1,
+    unlockDays: 7,
+    description: "Light stake that nudges marketplace and routing earnings."
+  },
+  {
+    id: "tier_harnessed",
+    name: "Harnessed",
+    minLockedTokens: 10000,
+    earningsMultiplier: 1.35,
+    unlockDays: 21,
+    description: "Operator-grade stake for serious resource providers."
+  },
+  {
+    id: "tier_sovereign",
+    name: "Sovereign",
+    minLockedTokens: 50000,
+    earningsMultiplier: 1.75,
+    unlockDays: 45,
+    description: "Maximum multiplier for high-throughput BRIDLE network operators."
+  }
+];
+
+export const seededStakePositions: StakePosition[] = [
+  {
+    id: "stake_demo_harnessed",
+    userId: demoUser.id,
+    tierId: "tier_harnessed",
+    lockedTokens: 12500,
+    tokenSymbol: "BRDL",
+    status: "active",
+    lockedAt: "2026-06-18T12:00:00.000Z",
+    unlockAvailableAt: "2026-07-09T12:00:00.000Z"
+  }
+];
+
+export const seededEarningsTicker: EarningsTicker = {
+  accruedUsdc: 42.18,
+  baseUsdcPerSecond: 0.002184,
+  boostedUsdcPerSecond: 0.002948,
+  multiplier: 1.35,
+  lastTickAt: "2026-06-23T15:36:00.000Z"
+};
 
 export const seededConnections: ResourceConnection[] = [
   {
@@ -516,6 +575,9 @@ export const initialState: BridleState = {
     payoutEnabled: true,
     createdAt: "2026-06-11T16:42:00.000Z"
   },
+  membershipTiers: seededMembershipTiers,
+  stakePositions: seededStakePositions,
+  earningsTicker: seededEarningsTicker,
   resources: seededResources,
   connections: seededConnections,
   venues: seededVenues,

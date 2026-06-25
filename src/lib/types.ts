@@ -8,6 +8,34 @@ export type PricingMode = "internal" | "free" | "metered" | "subscription" | "se
 
 export type RouteVenueType = "agent-workload" | "api-proxy" | "compute" | "data" | "settlement";
 
+export type MembershipTier = {
+  id: string;
+  name: string;
+  minLockedTokens: number;
+  earningsMultiplier: number;
+  unlockDays: number;
+  description: string;
+};
+
+export type StakePosition = {
+  id: string;
+  userId: string;
+  tierId: string;
+  lockedTokens: number;
+  tokenSymbol: "BRDL";
+  status: "active" | "unlocking" | "unlocked";
+  lockedAt: string;
+  unlockAvailableAt: string;
+};
+
+export type EarningsTicker = {
+  accruedUsdc: number;
+  baseUsdcPerSecond: number;
+  boostedUsdcPerSecond: number;
+  multiplier: number;
+  lastTickAt: string;
+};
+
 export type User = {
   id: string;
   name: string;
@@ -233,6 +261,9 @@ export type Notification = {
 export type BridleState = {
   user: User | null;
   wallet: Wallet | null;
+  membershipTiers: MembershipTier[];
+  stakePositions: StakePosition[];
+  earningsTicker: EarningsTicker;
   resources: Resource[];
   connections: ResourceConnection[];
   venues: RouteVenue[];

@@ -20,6 +20,9 @@ export function getSupabaseClient() {
 export const supabaseTables = {
   users: "users",
   wallets: "wallets",
+  membershipTiers: "membership_tiers",
+  stakePositions: "stake_positions",
+  earningsTickers: "earnings_tickers",
   resources: "resources",
   resourceConnections: "resource_connections",
   routeVenues: "route_venues",

@@ -49,7 +49,7 @@ The profile image is wired into app Open Graph metadata. GitHub's repository ima
 | --- | --- |
 | Landing page | Pixel-art BRIDLE brand, hero, resource categories, product explanation, CTAs |
 | Auth | Demo login/signup flow with local persistence and Supabase-ready architecture |
-| Dashboard | Resource counts, active/offline state, usage, earnings, notifications, live auto-routing |
+| Dashboard | Resource counts, live auto-routing, membership staking, and per-second earnings ticker |
 | Add Resource | Guided wizard for type, connection details, classification, visibility, activation |
 | Registry | Searchable/filterable canonical list of all bound resources |
 | Resource Detail | Metadata, health, usage, monetization settings, route relationships, heartbeat simulation |
@@ -262,6 +262,9 @@ The database schema is in `supabase/schema.sql` and includes:
 
 - `users`
 - `wallets`
+- `membership_tiers`
+- `stake_positions`
+- `earnings_tickers`
 - `resources`
 - `resource_connections`
 - `orchestration_flows`
@@ -314,6 +317,29 @@ on public.resources
 for select
 using (owner_id = auth.uid());
 ```
+
+## Tiered membership and staking
+
+BRIDLE includes a staking-style membership MVP. Operators lock BRDL into a tier and receive an earnings multiplier that boosts the live estimated USDC accrual ticker on the dashboard.
+
+Default tiers:
+
+| Tier | Locked BRDL | Multiplier | Unlock window |
+| --- | ---: | ---: | ---: |
+| Unbridled | 0 | 1.00x | 0 days |
+| Reined | 1,000 | 1.10x | 7 days |
+| Harnessed | 10,000 | 1.35x | 21 days |
+| Sovereign | 50,000 | 1.75x | 45 days |
+
+Ticker formula:
+
+```text
+base_usdc_per_second = active_resource_monthly_earnings / 30 days
+boosted_usdc_per_second = base_usdc_per_second * active_membership_multiplier
+live_accrued_usdc = persisted_accrued_usdc + elapsed_seconds * boosted_usdc_per_second
+```
+
+The current implementation is an MVP ledger for BRDL locks. Production staking should move token custody and unlock enforcement into audited on-chain programs or verified escrow contracts.
 
 ## Auto-router model
 

@@ -5,9 +5,11 @@ import { initialState } from "@/lib/seed";
 import type {
   AutoRoute,
   BridleState,
+  EarningsTicker,
   FlowRun,
   FlowStepTrace,
   FlowStep,
+  MembershipTier,
   OrchestrationFlow,
   RouteReallocation,
   RouteScoreBreakdown,
@@ -15,6 +17,7 @@ import type {
   Resource,
   ResourceConnection,
   ResourceDraft,
+  StakePosition,
   User,
   Wallet,
   X402Settlement
@@ -42,6 +45,8 @@ type BridleStore = BridleState & {
   }) => OrchestrationFlow;
   runFlow: (flowId: string) => FlowRun | null;
   reallocateRoutes: () => RouteReallocation;
+  lockMembershipTokens: (lockedTokens: number) => StakePosition;
+  requestStakeUnlock: (stakeId: string) => void;
   createX402Settlement: (settlement: {
     resourceId?: string;
     payerAddress?: string;
@@ -61,6 +66,7 @@ type BridleStore = BridleState & {
 
 const storageKey = "bridle.state.v1";
 const reallocationIntervalMs = 5 * 60 * 1000;
+const monthSeconds = 30 * 24 * 60 * 60;
 
 const StoreContext = createContext<BridleStore | undefined>(undefined);
 
@@ -68,12 +74,54 @@ function normalizeState(state: BridleState): BridleState {
   return {
     ...initialState,
     ...state,
+    membershipTiers: state.membershipTiers || initialState.membershipTiers,
+    stakePositions: state.stakePositions || initialState.stakePositions,
+    earningsTicker: state.earningsTicker || initialState.earningsTicker,
     venues: state.venues || initialState.venues,
     autoRoutes: state.autoRoutes || initialState.autoRoutes,
     routeReallocations: state.routeReallocations || initialState.routeReallocations,
     flows: state.flows || initialState.flows,
     flowRuns: state.flowRuns || initialState.flowRuns,
     x402Settlements: state.x402Settlements || initialState.x402Settlements
+  };
+}
+
+function activeStake(stakePositions: StakePosition[]) {
+  return [...stakePositions]
+    .filter((stake) => stake.status === "active")
+    .sort((a, b) => b.lockedTokens - a.lockedTokens)[0];
+}
+
+function tierForLockedTokens(tiers: MembershipTier[], lockedTokens: number) {
+  return [...tiers]
+    .filter((tier) => lockedTokens >= tier.minLockedTokens)
+    .sort((a, b) => b.minLockedTokens - a.minLockedTokens)[0];
+}
+
+function activeMembershipTier(tiers: MembershipTier[], stakePositions: StakePosition[]) {
+  const stake = activeStake(stakePositions);
+  return tierForLockedTokens(tiers, stake?.lockedTokens || 0) || tiers[0];
+}
+
+function baseEarningsPerSecond(resources: Resource[]) {
+  const monthlyEstimate = resources
+    .filter((resource) => resource.status === "active")
+    .reduce((total, resource) => total + resource.earningsEstimate, 0);
+
+  return monthlyEstimate / monthSeconds;
+}
+
+function nextTicker(resources: Resource[], tiers: MembershipTier[], stakes: StakePosition[], current?: EarningsTicker): EarningsTicker {
+  const tier = activeMembershipTier(tiers, stakes);
+  const baseUsdcPerSecond = baseEarningsPerSecond(resources);
+  const multiplier = tier?.earningsMultiplier || 1;
+
+  return {
+    accruedUsdc: current?.accruedUsdc || 0,
+    baseUsdcPerSecond,
+    boostedUsdcPerSecond: baseUsdcPerSecond * multiplier,
+    multiplier,
+    lastTickAt: nowIso()
   };
 }
 
@@ -613,6 +661,82 @@ export function BridleProvider({ children }: { children: ReactNode }) {
         const { state: nextState, reallocation } = applyRouteReallocation(state);
         setState(nextState);
         return reallocation;
+      },
+      lockMembershipTokens: (lockedTokens) => {
+        const safeAmount = Math.max(0, Math.floor(lockedTokens));
+        const tier = tierForLockedTokens(state.membershipTiers, safeAmount) || state.membershipTiers[0];
+        const lockedAt = nowIso();
+        const unlockAvailableAt = new Date(Date.now() + (tier?.unlockDays || 0) * 24 * 60 * 60 * 1000).toISOString();
+        const stake: StakePosition = {
+          id: makeId("stake"),
+          userId: state.user?.id || "user_demo",
+          tierId: tier.id,
+          lockedTokens: safeAmount,
+          tokenSymbol: "BRDL",
+          status: "active",
+          lockedAt,
+          unlockAvailableAt
+        };
+
+        setState((current) => {
+          const stakePositions = [stake, ...current.stakePositions];
+
+          return {
+            ...current,
+            stakePositions,
+            earningsTicker: nextTicker(current.resources, current.membershipTiers, stakePositions, current.earningsTicker),
+            auditLogs: [
+              {
+                id: makeId("audit"),
+                actor: current.user?.name || "BRIDLE member",
+                action: "locked membership stake",
+                target: `${safeAmount.toLocaleString()} BRDL -> ${tier.name}`,
+                createdAt: lockedAt
+              },
+              ...current.auditLogs
+            ],
+            notifications: [
+              {
+                id: makeId("note"),
+                title: "Membership boosted",
+                body: `${tier.name} tier active at ${tier.earningsMultiplier.toFixed(2)}x earnings.`,
+                severity: "success",
+                createdAt: lockedAt
+              },
+              ...current.notifications
+            ]
+          };
+        });
+
+        return stake;
+      },
+      requestStakeUnlock: (stakeId) => {
+        setState((current) => {
+          const stakePositions = current.stakePositions.map((stake) =>
+            stake.id === stakeId
+              ? {
+                  ...stake,
+                  status: "unlocking" as const
+                }
+              : stake
+          );
+
+          return {
+            ...current,
+            stakePositions,
+            earningsTicker: nextTicker(current.resources, current.membershipTiers, stakePositions, current.earningsTicker),
+            auditLogs: [
+              {
+                id: makeId("audit"),
+                actor: current.user?.name || "BRIDLE member",
+                action: "requested stake unlock",
+                target: stakeId,
+                createdAt: nowIso()
+              },
+              ...current.auditLogs
+            ]
+          };
+        });
       },
       createX402Settlement: (settlement) => {
         const created: X402Settlement = {

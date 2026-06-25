@@ -1,16 +1,20 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Activity,
   AlertTriangle,
   ChartNoAxesCombined,
   CircleDollarSign,
+  Crown,
   GitBranch,
+  Lock,
   Network,
   Plus,
   RotateCcw,
-  Server
+  Server,
+  TrendingUp
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -20,6 +24,7 @@ import { ResourceTypeBadge, StatCard, StatusBadge } from "@/components/retro";
 import { UsageAreaChart } from "@/components/charts";
 import { useBridle } from "@/lib/store";
 import { cn, formatCompact, formatCurrency, resourceTypeLabel, summarizeResources } from "@/lib/utils";
+import type { MembershipTier, StakePosition } from "@/lib/types";
 
 function routeTone(status: "live" | "standby" | "blocked") {
   return {
@@ -27,6 +32,18 @@ function routeTone(status: "live" | "standby" | "blocked") {
     standby: "border-yellow-100/70 bg-yellow-400/10 text-yellow-100",
     blocked: "border-red-200/70 bg-red-400/10 text-red-100"
   }[status];
+}
+
+function activeStake(stakePositions: StakePosition[]) {
+  return [...stakePositions]
+    .filter((stake) => stake.status === "active")
+    .sort((a, b) => b.lockedTokens - a.lockedTokens)[0];
+}
+
+function tierForStake(tiers: MembershipTier[], stake?: StakePosition) {
+  return [...tiers]
+    .filter((tier) => (stake?.lockedTokens || 0) >= tier.minLockedTokens)
+    .sort((a, b) => b.minLockedTokens - a.minLockedTokens)[0];
 }
 
 export default function DashboardPage() {
@@ -39,9 +56,29 @@ export default function DashboardPage() {
     venues,
     autoRoutes,
     routeReallocations,
-    reallocateRoutes
+    reallocateRoutes,
+    membershipTiers,
+    stakePositions,
+    earningsTicker,
+    lockMembershipTokens,
+    requestStakeUnlock
   } = useBridle();
+  const [tickerNow, setTickerNow] = useState(() => Date.now());
+  const [stakeAmount, setStakeAmount] = useState("25000");
   const summary = summarizeResources(resources);
+  const currentStake = activeStake(stakePositions);
+  const currentTier = tierForStake(membershipTiers, currentStake) || membershipTiers[0];
+  const tickerElapsedSeconds = Math.max(0, (tickerNow - new Date(earningsTicker.lastTickAt).getTime()) / 1000);
+  const liveAccruedUsdc = earningsTicker.accruedUsdc + tickerElapsedSeconds * earningsTicker.boostedUsdcPerSecond;
+  const boostedHourlyUsdc = earningsTicker.boostedUsdcPerSecond * 3600;
+  const baseHourlyUsdc = earningsTicker.baseUsdcPerSecond * 3600;
+  const nextTier = useMemo(
+    () =>
+      [...membershipTiers]
+        .sort((a, b) => a.minLockedTokens - b.minLockedTokens)
+        .find((tier) => tier.minLockedTokens > (currentStake?.lockedTokens || 0)),
+    [currentStake?.lockedTokens, membershipTiers]
+  );
   const latestReallocation = routeReallocations[0];
   const liveRouteRows = [...autoRoutes].sort((a, b) => {
     if (a.status !== b.status) {
@@ -51,6 +88,12 @@ export default function DashboardPage() {
     return b.score - a.score;
   });
 
+  useEffect(() => {
+    const interval = window.setInterval(() => setTickerNow(Date.now()), 1000);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
   return (
     <AppShell title="Dashboard" kicker="bind idle systems into one living network">
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -58,6 +101,132 @@ export default function DashboardPage() {
         <StatCard detail={`${summary.offline} offline`} icon={Activity} label="active resources" value={summary.active} />
         <StatCard detail="metered calls" icon={ChartNoAxesCombined} label="total usage" value={summary.requests} />
         <StatCard detail="estimated value" icon={CircleDollarSign} label="earnings" value={formatCurrency(summary.earnings)} />
+      </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_430px]">
+        <Card className="relative overflow-hidden">
+          <div className="absolute right-5 top-5 text-white/10">
+            <TrendingUp className="h-24 w-24" />
+          </div>
+          <CardHeader>
+            <div>
+              <CardTitle>Live earnings ticker</CardTitle>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-400">
+                Estimated USDC accrues every second from active resource earnings, boosted by the current membership tier.
+              </p>
+            </div>
+            <Badge className="border-emerald-200/70 bg-emerald-400/10 text-emerald-200">
+              {earningsTicker.multiplier.toFixed(2)}x live
+            </Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="font-pixel text-4xl leading-relaxed text-white md:text-6xl">
+              {liveAccruedUsdc.toFixed(6)}
+              <span className="ml-3 text-base text-zinc-500">USDC</span>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-4">
+              <div className="border border-white/20 p-3">
+                <div className="text-xs uppercase tracking-[0.2em] text-zinc-500">base / sec</div>
+                <div className="mt-2 font-pixel text-xs text-white">{earningsTicker.baseUsdcPerSecond.toFixed(6)}</div>
+              </div>
+              <div className="border border-white/20 p-3">
+                <div className="text-xs uppercase tracking-[0.2em] text-zinc-500">boosted / sec</div>
+                <div className="mt-2 font-pixel text-xs text-white">{earningsTicker.boostedUsdcPerSecond.toFixed(6)}</div>
+              </div>
+              <div className="border border-white/20 p-3">
+                <div className="text-xs uppercase tracking-[0.2em] text-zinc-500">base / hour</div>
+                <div className="mt-2 font-pixel text-xs text-white">{baseHourlyUsdc.toFixed(3)}</div>
+              </div>
+              <div className="border border-white/20 p-3">
+                <div className="text-xs uppercase tracking-[0.2em] text-zinc-500">boosted / hour</div>
+                <div className="mt-2 font-pixel text-xs text-white">{boostedHourlyUsdc.toFixed(3)}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>Membership stake</CardTitle>
+              <p className="mt-3 text-sm leading-6 text-zinc-400">Lock BRDL to unlock higher earnings multipliers.</p>
+            </div>
+            <Crown className="h-5 w-5" />
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4 border-2 border-white/40 p-4">
+              <div className="text-xs uppercase tracking-[0.2em] text-zinc-500">active tier</div>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <div className="font-pixel text-lg text-white">{currentTier?.name || "Unbridled"}</div>
+                <Badge>{(currentTier?.earningsMultiplier || 1).toFixed(2)}x</Badge>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-zinc-400">{currentTier?.description || "Base network access."}</p>
+              {currentStake ? (
+                <div className="mt-4 grid gap-2 text-xs text-zinc-400">
+                  <div className="flex justify-between gap-3">
+                    <span>locked</span>
+                    <span className="font-pixel text-white">{currentStake.lockedTokens.toLocaleString()} BRDL</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span>unlock available</span>
+                    <span className="text-white">{new Date(currentStake.unlockAvailableAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="grid gap-3">
+              <label className="grid gap-2">
+                <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">lock amount</span>
+                <input
+                  className="border-2 border-white/40 bg-black px-4 py-3 text-white outline-none focus:border-white"
+                  inputMode="numeric"
+                  onChange={(event) => setStakeAmount(event.target.value)}
+                  value={stakeAmount}
+                />
+              </label>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Button onClick={() => lockMembershipTokens(Number(stakeAmount) || 0)} type="button">
+                  <Lock className="h-4 w-4" />
+                  Lock BRDL
+                </Button>
+                <Button disabled={!currentStake} onClick={() => currentStake && requestStakeUnlock(currentStake.id)} type="button" variant="ghost">
+                  Request unlock
+                </Button>
+              </div>
+              {nextTier ? (
+                <div className="border border-dashed border-white/30 p-3 text-xs leading-5 text-zinc-400">
+                  Next tier: <span className="text-white">{nextTier.name}</span> at {nextTier.minLockedTokens.toLocaleString()} BRDL for{" "}
+                  {nextTier.earningsMultiplier.toFixed(2)}x.
+                </div>
+              ) : (
+                <div className="border border-dashed border-white/30 p-3 text-xs leading-5 text-zinc-400">
+                  Maximum tier active. The reins are fully tightened.
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 space-y-2">
+              {membershipTiers.map((tier) => (
+                <div
+                  className={cn(
+                    "grid gap-2 border p-3 text-xs md:grid-cols-[1fr_auto]",
+                    currentTier?.id === tier.id ? "border-white bg-white/5" : "border-white/20"
+                  )}
+                  key={tier.id}
+                >
+                  <div>
+                    <div className="font-pixel text-[10px] leading-5 text-white">{tier.name}</div>
+                    <div className="mt-1 uppercase tracking-[0.18em] text-zinc-500">
+                      {tier.minLockedTokens.toLocaleString()} BRDL / {tier.unlockDays}d lock
+                    </div>
+                  </div>
+                  <Badge>{tier.earningsMultiplier.toFixed(2)}x</Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="mt-5">
