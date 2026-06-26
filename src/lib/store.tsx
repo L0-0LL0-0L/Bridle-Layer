@@ -71,6 +71,7 @@ type BridleStore = BridleState & {
 
 const storageKey = "bridle.state.v1";
 const reallocationIntervalMs = 5 * 60 * 1000;
+const healthPauseMs = reallocationIntervalMs;
 const monthSeconds = 30 * 24 * 60 * 60;
 
 const StoreContext = createContext<BridleStore | undefined>(undefined);
@@ -103,6 +104,94 @@ function healthFromExecution(log: ExecutionLog): ResourceHealthStatus {
   }
 
   return "error";
+}
+
+function reconcileVenuePauses(venues: RouteVenue[], now = Date.now()) {
+  return venues.map((venue) => {
+    if (venue.status !== "paused" || !venue.pausedUntil) {
+      return venue;
+    }
+
+    if (new Date(venue.pausedUntil).getTime() > now) {
+      return venue;
+    }
+
+    const { pausedUntil, pausedReason, pausedByResourceId, ...rest } = venue;
+    void pausedUntil;
+    void pausedReason;
+    void pausedByResourceId;
+
+    return {
+      ...rest,
+      status: "open" as const
+    };
+  });
+}
+
+function applyHealthProbeVenuePauses(current: BridleState, log: ExecutionLog) {
+  if (log.kind !== "health_probe") {
+    return current;
+  }
+
+  const now = Date.now();
+  const baseVenues = reconcileVenuePauses(current.venues, now);
+  const failedResource = current.resources.find((resource) => resource.id === log.resourceId);
+
+  if (!failedResource) {
+    return {
+      ...current,
+      venues: baseVenues
+    };
+  }
+
+  if (log.ok) {
+    return {
+      ...current,
+      venues: baseVenues.map((venue) =>
+        venue.pausedByResourceId === log.resourceId
+          ? {
+              ...venue,
+              status: "open" as const,
+              pausedUntil: undefined,
+              pausedReason: undefined,
+              pausedByResourceId: undefined
+            }
+          : venue
+      )
+    };
+  }
+
+  const affectedVenueIds = new Set(
+    current.autoRoutes
+      .filter((route) => route.resourceId === log.resourceId && route.status === "live")
+      .map((route) => route.venueId)
+  );
+
+  if (affectedVenueIds.size === 0) {
+    for (const venue of baseVenues) {
+      if (venue.requiredTypes.includes(failedResource.type)) {
+        affectedVenueIds.add(venue.id);
+      }
+    }
+  }
+
+  const pausedUntil = new Date(now + healthPauseMs).toISOString();
+  const pausedReason = `${failedResource.name} failed health probe${log.httpStatus ? ` (${log.httpStatus})` : ""}.`;
+
+  return {
+    ...current,
+    venues: baseVenues.map((venue) =>
+      affectedVenueIds.has(venue.id)
+        ? {
+            ...venue,
+            status: "paused" as const,
+            pausedUntil,
+            pausedReason,
+            pausedByResourceId: log.resourceId
+          }
+        : venue
+    )
+  };
 }
 
 function activeStake(stakePositions: StakePosition[]) {
@@ -257,7 +346,8 @@ function applyRouteReallocation(current: BridleState): { state: BridleState; rea
   const started = Date.now();
   const ranAt = new Date(started).toISOString();
   const nextRunAt = new Date(started + reallocationIntervalMs).toISOString();
-  const nextRoutes: AutoRoute[] = current.venues.flatMap((venue) => {
+  const venues = reconcileVenuePauses(current.venues, started);
+  const nextRoutes: AutoRoute[] = venues.flatMap((venue) => {
     if (venue.status === "paused") {
       return [];
     }
@@ -313,12 +403,13 @@ function applyRouteReallocation(current: BridleState): { state: BridleState; rea
     nextRunAt,
     durationMs: Math.max(1, Date.now() - started),
     routesChanged,
-    summary: `Scored ${current.resources.length} resources against ${current.venues.length} venues; ${routesChanged} route rows changed. Holder gate: ${current.tokenGate.status}.`
+    summary: `Scored ${current.resources.length} resources against ${venues.length} venues; ${routesChanged} route rows changed. Paused venues: ${venues.filter((venue) => venue.status === "paused").length}. Holder gate: ${current.tokenGate.status}.`
   };
 
   return {
     state: {
       ...current,
+      venues,
       autoRoutes: nextRoutes,
       routeReallocations: [reallocation, ...current.routeReallocations].slice(0, 20),
       auditLogs: [
@@ -587,37 +678,48 @@ export function BridleProvider({ children }: { children: ReactNode }) {
         }));
       },
       recordExecutionLog: (log) => {
-        setState((current) => ({
-          ...current,
-          executionLogs: [log, ...current.executionLogs].slice(0, 50),
-          resources: current.resources.map((resource) =>
-            resource.id === log.resourceId
-              ? {
-                  ...resource,
-                  healthStatus: healthFromExecution(log),
-                  lastLatencyMs: log.latencyMs,
-                  lastHttpStatus: log.httpStatus,
-                  lastHealthAt: log.createdAt,
-                  usage: log.kind === "live_call" && log.ok
-                    ? {
-                        ...resource.usage,
-                        requests: resource.usage.requests + 1
-                      }
-                    : resource.usage
-                }
-              : resource
-          ),
-          auditLogs: [
-            {
-              id: makeId("audit"),
-              actor: log.callerUserId || "BRIDLE execution",
-              action: log.kind === "health_probe" ? "health checked resource" : "executed resource",
-              target: `${log.resourceId} / ${log.ok ? "ok" : "failed"}`,
-              createdAt: log.createdAt
-            },
-            ...current.auditLogs
-          ]
-        }));
+        setState((current) => {
+          const withLogAndHealth: BridleState = {
+            ...current,
+            executionLogs: [log, ...current.executionLogs].slice(0, 50),
+            resources: current.resources.map((resource) =>
+              resource.id === log.resourceId
+                ? {
+                    ...resource,
+                    healthStatus: healthFromExecution(log),
+                    lastLatencyMs: log.latencyMs,
+                    lastHttpStatus: log.httpStatus,
+                    lastHealthAt: log.createdAt,
+                    usage:
+                      log.kind === "live_call" && log.ok
+                        ? {
+                            ...resource.usage,
+                            requests: resource.usage.requests + 1
+                          }
+                        : resource.usage
+                  }
+                : resource
+            ),
+            auditLogs: [
+              {
+                id: makeId("audit"),
+                actor: log.callerUserId || "BRIDLE execution",
+                action: log.kind === "health_probe" ? "health checked resource" : "executed resource",
+                target: `${log.resourceId} / ${log.ok ? "ok" : "failed"}`,
+                createdAt: log.createdAt
+              },
+              ...current.auditLogs
+            ]
+          };
+          const withVenuePauses = applyHealthProbeVenuePauses(withLogAndHealth, log);
+
+          if (log.kind === "health_probe") {
+            const { state: rerouted } = applyRouteReallocation(withVenuePauses);
+            return rerouted;
+          }
+
+          return withVenuePauses;
+        });
       },
       addConnection: (connection) => {
         setState((current) => ({

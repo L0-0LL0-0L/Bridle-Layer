@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Activity, ArrowLeft, Save } from "lucide-react";
+import { Activity, ArrowLeft, Save, Stethoscope } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,9 @@ const visibilities: Visibility[] = ["private", "team", "public", "monetized"];
 
 export default function ResourceDetailPage() {
   const params = useParams<{ id: string }>();
-  const { resources, connections, usageEvents, healthChecks, updateResource } = useBridle();
+  const { user, resources, connections, usageEvents, healthChecks, updateResource, recordExecutionLog } = useBridle();
+  const [probing, setProbing] = useState(false);
+  const [probeError, setProbeError] = useState<string | null>(null);
   const resource = resources.find((item) => item.id === params.id);
 
   if (!resource) {
@@ -34,9 +37,38 @@ export default function ResourceDetailPage() {
     );
   }
 
-  const relatedConnections = connections.filter((connection) => connection.sourceId === resource.id || connection.targetId === resource.id);
-  const relatedEvents = usageEvents.filter((event) => event.resourceId === resource.id);
-  const relatedHealth = healthChecks.filter((check) => check.resourceId === resource.id);
+  const currentResource = resource;
+  const relatedConnections = connections.filter((connection) => connection.sourceId === currentResource.id || connection.targetId === currentResource.id);
+  const relatedEvents = usageEvents.filter((event) => event.resourceId === currentResource.id);
+  const relatedHealth = healthChecks.filter((check) => check.resourceId === currentResource.id);
+
+  async function runHealthProbe() {
+    setProbeError(null);
+    setProbing(true);
+    try {
+      const response = await fetch("/api/resources/health", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          resource: currentResource,
+          providerUserId: currentResource.ownerId
+        })
+      });
+      const payload = await response.json();
+
+      if (payload.log) {
+        recordExecutionLog(payload.log);
+      } else {
+        setProbeError(payload.error || `Health probe failed (${response.status}).`);
+      }
+    } catch (error) {
+      setProbeError(error instanceof Error ? error.message : "Health probe failed.");
+    } finally {
+      setProbing(false);
+    }
+  }
 
   return (
     <AppShell title={resource.name} kicker={`${resourceTypeLabel(resource.type)} detail page`}>
@@ -50,6 +82,10 @@ export default function ResourceDetailPage() {
         <Button onClick={() => updateResource(resource.id, { lastHeartbeat: new Date().toISOString(), status: "active" })}>
           <Save className="h-4 w-4" />
           Simulate heartbeat
+        </Button>
+        <Button disabled={probing || user?.id !== resource.ownerId} onClick={runHealthProbe} variant="ghost">
+          <Stethoscope className="h-4 w-4" />
+          {probing ? "Probing..." : "Provider health probe"}
         </Button>
       </div>
 
@@ -137,7 +173,9 @@ export default function ResourceDetailPage() {
               {[
                 ["requests", resource.usage.requests.toLocaleString()],
                 ["uptime", `${resource.usage.uptime}%`],
-                ["latency", `${resource.usage.latencyMs}ms`],
+                ["latency", `${resource.lastLatencyMs ?? resource.usage.latencyMs}ms`],
+                ["http", resource.lastHttpStatus ? String(resource.lastHttpStatus) : "n/a"],
+                ["health", resource.healthStatus],
                 ["errors", `${resource.usage.errorRate}%`]
               ].map(([label, value]) => (
                 <div className="flex justify-between border-b border-white/10 pb-2" key={label}>
@@ -145,6 +183,7 @@ export default function ResourceDetailPage() {
                   <span className="font-pixel text-xs text-white">{value}</span>
                 </div>
               ))}
+              {probeError ? <div className="border border-red-200/60 p-3 text-xs leading-5 text-red-100">{probeError}</div> : null}
               {relatedHealth.map((check) => (
                 <div className="border border-white/20 p-3 text-xs leading-5 text-zinc-400" key={check.id}>
                   {check.message}

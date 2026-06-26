@@ -137,6 +137,9 @@ export type RouteVenue = {
   latencyTargetMs: number;
   maxErrorRate: number;
   status: "open" | "saturated" | "paused";
+  pausedUntil?: string;
+  pausedReason?: string;
+  pausedByResourceId?: string;
 };
 
 export type RouteScoreBreakdown = {

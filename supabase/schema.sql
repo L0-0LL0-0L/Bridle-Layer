@@ -147,6 +147,9 @@ create table public.route_venues (
   latency_target_ms integer not null default 1000,
   max_error_rate numeric not null default 2,
   status text not null default 'open',
+  paused_until timestamptz,
+  paused_reason text,
+  paused_by_resource_id uuid references public.resources(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

@@ -81,6 +81,7 @@ export default function DashboardPage() {
     [currentStake?.lockedTokens, membershipTiers]
   );
   const latestReallocation = routeReallocations[0];
+  const pausedVenues = venues.filter((venue) => venue.status === "paused");
   const liveRouteRows = [...autoRoutes].sort((a, b) => {
     if (a.status !== b.status) {
       return a.status === "live" ? -1 : b.status === "live" ? 1 : 0;
@@ -243,6 +244,7 @@ export default function DashboardPage() {
               <GitBranch className="h-3 w-3" />
               {venues.length} venues
             </Badge>
+            {pausedVenues.length ? <Badge className="border-red-200/70 text-red-100">{pausedVenues.length} paused</Badge> : null}
             {latestReallocation ? <Badge>{latestReallocation.routesChanged} changed</Badge> : null}
             <Badge
               className={
@@ -287,6 +289,23 @@ export default function DashboardPage() {
                   : `Hold at least ${tokenGate.minBalance.toLocaleString()} $BRIDLE to unlock holder priority scoring.`}
               </div>
             </div>
+            {pausedVenues.length ? (
+              <div className="border border-red-200/50 bg-red-950/20 p-3 md:col-span-3">
+                <div className="text-xs uppercase tracking-[0.2em] text-red-100">temporarily removed venues</div>
+                <div className="mt-3 grid gap-2">
+                  {pausedVenues.map((venue) => (
+                    <div className="grid gap-2 text-xs text-zinc-300 md:grid-cols-[1fr_auto]" key={venue.id}>
+                      <span>
+                        {venue.name}: {venue.pausedReason || "Health probe failure."}
+                      </span>
+                      <span className="font-pixel text-[10px] text-white">
+                        {venue.pausedUntil ? `until ${new Date(venue.pausedUntil).toLocaleTimeString()}` : "cooldown"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="overflow-x-auto">

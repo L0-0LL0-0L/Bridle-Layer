@@ -141,6 +141,12 @@ export default function NetworkPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="min-h-16 text-sm leading-6 text-zinc-400">{venue.description}</p>
+                  {venue.status === "paused" ? (
+                    <div className="mb-4 border border-red-200/50 bg-red-950/20 p-3 text-xs leading-5 text-red-100">
+                      Removed from active routes: {venue.pausedReason || "health probe failed"}
+                      {venue.pausedUntil ? ` until ${new Date(venue.pausedUntil).toLocaleTimeString()}` : ""}
+                    </div>
+                  ) : null}
                   <div className="mt-5 grid grid-cols-3 gap-3">
                     <div className="border border-white/20 p-3">
                       <div className="text-xs uppercase tracking-[0.2em] text-zinc-500">demand</div>
