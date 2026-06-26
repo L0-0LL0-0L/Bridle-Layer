@@ -1,4 +1,4 @@
-import type { MarketplaceListing, Resource, ResourceStatus, ResourceType } from "./types";
+import type { MarketplaceListing, Resource, ResourceHealthStatus, ResourceStatus, ResourceType } from "./types";
 
 export type MarketplaceResourceSummary = {
   id: string;
@@ -11,6 +11,10 @@ export type MarketplaceResourceSummary = {
   usageRequests: number;
   uptime: number;
   earningsEstimate: number;
+  healthStatus: ResourceHealthStatus;
+  lastLatencyMs?: number;
+  lastHttpStatus?: number;
+  lastHealthAt?: string;
   tags: string[];
 };
 
@@ -30,6 +34,10 @@ export const marketplaceResourceColumns = [
   "usageRequests",
   "uptime",
   "earningsEstimate",
+  "healthStatus",
+  "lastLatencyMs",
+  "lastHttpStatus",
+  "lastHealthAt",
   "tags"
 ] as const;
 
@@ -50,7 +58,7 @@ export function listMarketplace({
         return null;
       }
 
-      return {
+      const item: MarketplaceListItem = {
         listing,
         resource: {
           id: resource.id,
@@ -63,9 +71,15 @@ export function listMarketplace({
           usageRequests: resource.usage.requests,
           uptime: resource.usage.uptime,
           earningsEstimate: resource.earningsEstimate,
+          healthStatus: resource.healthStatus,
+          lastLatencyMs: resource.lastLatencyMs,
+          lastHttpStatus: resource.lastHttpStatus,
+          lastHealthAt: resource.lastHealthAt,
           tags: resource.tags
         }
       };
+
+      return item;
     })
     .filter((item): item is MarketplaceListItem => item !== null);
 }

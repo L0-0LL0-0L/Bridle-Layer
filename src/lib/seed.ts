@@ -2,6 +2,7 @@ import type {
   AutoRoute,
   BridleState,
   EarningsTicker,
+  ExecutionLog,
   FlowRun,
   MembershipTier,
   OrchestrationFlow,
@@ -50,6 +51,10 @@ export const seededResources: Resource[] = [
       errorRate: 0.7
     },
     earningsEstimate: 1240,
+    healthStatus: "healthy",
+    lastLatencyMs: 842,
+    lastHttpStatus: 200,
+    lastHealthAt: "2026-06-23T15:35:00.000Z",
     createdAt: "2026-06-02T10:12:00.000Z",
     lastHeartbeat: "2026-06-23T15:35:00.000Z"
   },
@@ -78,6 +83,10 @@ export const seededResources: Resource[] = [
       errorRate: 1.2
     },
     earningsEstimate: 2860,
+    healthStatus: "healthy",
+    lastLatencyMs: 1180,
+    lastHttpStatus: 200,
+    lastHealthAt: "2026-06-23T15:33:00.000Z",
     createdAt: "2026-06-04T18:21:00.000Z",
     lastHeartbeat: "2026-06-23T15:33:00.000Z"
   },
@@ -106,6 +115,10 @@ export const seededResources: Resource[] = [
       errorRate: 3.8
     },
     earningsEstimate: 420,
+    healthStatus: "degraded",
+    lastLatencyMs: 231,
+    lastHttpStatus: 503,
+    lastHealthAt: "2026-06-23T15:29:00.000Z",
     createdAt: "2026-06-08T08:00:00.000Z",
     lastHeartbeat: "2026-06-23T15:29:00.000Z"
   },
@@ -134,6 +147,10 @@ export const seededResources: Resource[] = [
       errorRate: 0
     },
     earningsEstimate: 160,
+    healthStatus: "error",
+    lastLatencyMs: 0,
+    lastHttpStatus: undefined,
+    lastHealthAt: "2026-06-23T13:02:00.000Z",
     createdAt: "2026-06-10T12:15:00.000Z",
     lastHeartbeat: "2026-06-23T13:02:00.000Z"
   },
@@ -161,6 +178,10 @@ export const seededResources: Resource[] = [
       errorRate: 0
     },
     earningsEstimate: 0,
+    healthStatus: "healthy",
+    lastLatencyMs: 410,
+    lastHttpStatus: 200,
+    lastHealthAt: "2026-06-23T15:36:00.000Z",
     createdAt: "2026-06-11T16:42:00.000Z",
     lastHeartbeat: "2026-06-23T15:36:00.000Z"
   },
@@ -189,10 +210,16 @@ export const seededResources: Resource[] = [
       errorRate: 0.1
     },
     earningsEstimate: 980,
+    healthStatus: "healthy",
+    lastLatencyMs: 96,
+    lastHttpStatus: 200,
+    lastHealthAt: "2026-06-23T15:34:00.000Z",
     createdAt: "2026-06-14T19:12:00.000Z",
     lastHeartbeat: "2026-06-23T15:34:00.000Z"
   }
 ];
+
+export const seededExecutionLogs: ExecutionLog[] = [];
 
 export const seededMembershipTiers: MembershipTier[] = [
   {
@@ -601,6 +628,7 @@ export const initialState: BridleState = {
   stakePositions: seededStakePositions,
   earningsTicker: seededEarningsTicker,
   resources: seededResources,
+  executionLogs: seededExecutionLogs,
   connections: seededConnections,
   venues: seededVenues,
   autoRoutes: seededAutoRoutes,

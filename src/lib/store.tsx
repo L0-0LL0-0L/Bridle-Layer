@@ -6,6 +6,7 @@ import type {
   AutoRoute,
   BridleState,
   EarningsTicker,
+  ExecutionLog,
   FlowRun,
   FlowStepTrace,
   FlowStep,
@@ -17,6 +18,7 @@ import type {
   Resource,
   ResourceConnection,
   ResourceDraft,
+  ResourceHealthStatus,
   StakePosition,
   TokenGate,
   User,
@@ -37,6 +39,7 @@ type BridleStore = BridleState & {
   signOut: () => void;
   addResource: (draft: ResourceDraft) => Resource;
   updateResource: (id: string, patch: Partial<Resource>) => void;
+  recordExecutionLog: (log: ExecutionLog) => void;
   addConnection: (connection: Omit<ResourceConnection, "id" | "status"> & { status?: ResourceConnection["status"] }) => void;
   saveFlow: (flow: {
     id?: string;
@@ -85,8 +88,21 @@ function normalizeState(state: BridleState): BridleState {
     routeReallocations: state.routeReallocations || initialState.routeReallocations,
     flows: state.flows || initialState.flows,
     flowRuns: state.flowRuns || initialState.flowRuns,
-    x402Settlements: state.x402Settlements || initialState.x402Settlements
+    x402Settlements: state.x402Settlements || initialState.x402Settlements,
+    executionLogs: state.executionLogs || initialState.executionLogs
   };
+}
+
+function healthFromExecution(log: ExecutionLog): ResourceHealthStatus {
+  if (log.ok) {
+    return "healthy";
+  }
+
+  if (log.httpStatus && log.httpStatus >= 500) {
+    return "degraded";
+  }
+
+  return "error";
 }
 
 function activeStake(stakePositions: StakePosition[]) {
@@ -358,6 +374,10 @@ function resourceDefaults(draft: ResourceDraft, ownerId: string): Resource {
       errorRate: 0.2
     },
     earningsEstimate: draft.visibility === "monetized" ? 120 : 0,
+    healthStatus: "unknown",
+    lastLatencyMs: undefined,
+    lastHttpStatus: undefined,
+    lastHealthAt: undefined,
     createdAt: nowIso(),
     lastHeartbeat: nowIso()
   };
@@ -564,6 +584,39 @@ export function BridleProvider({ children }: { children: ReactNode }) {
         setState((current) => ({
           ...current,
           resources: current.resources.map((resource) => (resource.id === id ? { ...resource, ...patch } : resource))
+        }));
+      },
+      recordExecutionLog: (log) => {
+        setState((current) => ({
+          ...current,
+          executionLogs: [log, ...current.executionLogs].slice(0, 50),
+          resources: current.resources.map((resource) =>
+            resource.id === log.resourceId
+              ? {
+                  ...resource,
+                  healthStatus: healthFromExecution(log),
+                  lastLatencyMs: log.latencyMs,
+                  lastHttpStatus: log.httpStatus,
+                  lastHealthAt: log.createdAt,
+                  usage: log.kind === "live_call" && log.ok
+                    ? {
+                        ...resource.usage,
+                        requests: resource.usage.requests + 1
+                      }
+                    : resource.usage
+                }
+              : resource
+          ),
+          auditLogs: [
+            {
+              id: makeId("audit"),
+              actor: log.callerUserId || "BRIDLE execution",
+              action: log.kind === "health_probe" ? "health checked resource" : "executed resource",
+              target: `${log.resourceId} / ${log.ok ? "ok" : "failed"}`,
+              createdAt: log.createdAt
+            },
+            ...current.auditLogs
+          ]
         }));
       },
       addConnection: (connection) => {

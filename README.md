@@ -55,7 +55,7 @@ The profile image is wired into app Open Graph metadata. GitHub's repository ima
 | Resource Detail | Metadata, health, usage, monetization settings, route relationships, heartbeat simulation |
 | Orchestration | React Flow graph for conceptual resource routing |
 | Venue Directory | Public `/network` page listing venues, allocations, and estimated earnings |
-| Marketplace | Public/monetized resource explorer with pricing and availability |
+| Marketplace | Public/monetized resource explorer with health chips, Sim calls, and guarded Live calls |
 | Analytics | Usage charts, earnings estimates, compute usage, uptime, error rate, x402 settlements |
 | Wallet | Solana wallet adapter, address display, balance, real USDC transfer settlement |
 | Settings | Profile, UI preferences, API keys, security settings, demo reset |
@@ -267,6 +267,7 @@ The database schema is in `supabase/schema.sql` and includes:
 - `earnings_tickers`
 - `token_gates`
 - `resources`
+- `execution_logs`
 - `resource_connections`
 - `orchestration_flows`
 - `flow_runs`
@@ -318,6 +319,46 @@ on public.resources
 for select
 using (owner_id = auth.uid());
 ```
+
+Execution logs are scoped to the caller or provider:
+
+```sql
+create policy "execution logs readable by caller or provider"
+on public.execution_logs
+for select
+using (caller_user_id = auth.uid() or provider_user_id = auth.uid());
+```
+
+## Live resource execution
+
+BRIDLE includes a server-side `executeResource` function for real provider calls:
+
+- performs a real HTTP `GET` to the provider endpoint
+- enforces an 8s timeout per attempt
+- retries network and 5xx errors up to 3 attempts
+- does not retry 4xx responses
+- blocks SSRF targets including localhost, RFC1918, CGNAT, and link-local addresses
+- records every live call and provider health probe in `execution_logs`
+- stores `http_status`, `latency_ms`, `attempts`, `ok`, `error`, and a 500-character response excerpt
+- updates resource health fields after every call
+
+Resource health fields:
+
+```ts
+healthStatus: "unknown" | "healthy" | "degraded" | "error";
+lastLatencyMs?: number;
+lastHttpStatus?: number;
+lastHealthAt?: string;
+```
+
+Marketplace cards expose:
+
+- a health chip such as `● 142ms` or `● ERR`
+- `▸ Sim` for no-billing simulations
+- `▶ Live` for guarded real provider calls
+- a result panel with HTTP status, latency, attempts, ledger charge state, and response excerpt
+
+Ledger rule: live marketplace calls only charge on successful 2xx provider responses. Failed calls and health probes never charge.
 
 ## Tiered membership and staking
 

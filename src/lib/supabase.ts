@@ -25,6 +25,7 @@ export const supabaseTables = {
   earningsTickers: "earnings_tickers",
   tokenGates: "token_gates",
   resources: "resources",
+  executionLogs: "execution_logs",
   resourceConnections: "resource_connections",
   routeVenues: "route_venues",
   autoRoutes: "auto_routes",
