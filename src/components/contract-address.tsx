@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BRIDLE_TOKEN_MINT } from "@/lib/bridle-token";
 
-export const BRIDLE_CONTRACT_ADDRESS = "4i52FSf22KYBU8424Z2AGmJNG299jQhxM74YK1Espump";
+export const BRIDLE_CONTRACT_ADDRESS = BRIDLE_TOKEN_MINT;
 
 export function ContractAddress() {
   const [copied, setCopied] = useState(false);

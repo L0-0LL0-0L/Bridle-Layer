@@ -55,7 +55,7 @@ The profile image is wired into app Open Graph metadata. GitHub's repository ima
 | Resource Detail | Metadata, health, usage, monetization settings, route relationships, heartbeat simulation |
 | Orchestration | React Flow graph for conceptual resource routing |
 | Venue Directory | Public `/network` page listing venues, allocations, and estimated earnings |
-| Marketplace | Public/monetized resource explorer with pricing and availability |
+| Marketplace | Public/monetized resource explorer with health chips, Sim calls, and guarded Live calls |
 | Analytics | Usage charts, earnings estimates, compute usage, uptime, error rate, x402 settlements |
 | Wallet | Solana wallet adapter, address display, balance, real USDC transfer settlement |
 | Settings | Profile, UI preferences, API keys, security settings, demo reset |
@@ -265,7 +265,9 @@ The database schema is in `supabase/schema.sql` and includes:
 - `membership_tiers`
 - `stake_positions`
 - `earnings_tickers`
+- `token_gates`
 - `resources`
+- `execution_logs`
 - `resource_connections`
 - `orchestration_flows`
 - `flow_runs`
@@ -318,6 +320,46 @@ for select
 using (owner_id = auth.uid());
 ```
 
+Execution logs are scoped to the caller or provider:
+
+```sql
+create policy "execution logs readable by caller or provider"
+on public.execution_logs
+for select
+using (caller_user_id = auth.uid() or provider_user_id = auth.uid());
+```
+
+## Live resource execution
+
+BRIDLE includes a server-side `executeResource` function for real provider calls:
+
+- performs a real HTTP `GET` to the provider endpoint
+- enforces an 8s timeout per attempt
+- retries network and 5xx errors up to 3 attempts
+- does not retry 4xx responses
+- blocks SSRF targets including localhost, RFC1918, CGNAT, and link-local addresses
+- records every live call and provider health probe in `execution_logs`
+- stores `http_status`, `latency_ms`, `attempts`, `ok`, `error`, and a 500-character response excerpt
+- updates resource health fields after every call
+
+Resource health fields:
+
+```ts
+healthStatus: "unknown" | "healthy" | "degraded" | "error";
+lastLatencyMs?: number;
+lastHttpStatus?: number;
+lastHealthAt?: string;
+```
+
+Marketplace cards expose:
+
+- a health chip such as `● 142ms` or `● ERR`
+- `▸ Sim` for no-billing simulations
+- `▶ Live` for guarded real provider calls
+- a result panel with HTTP status, latency, attempts, ledger charge state, and response excerpt
+
+Ledger rule: live marketplace calls only charge on successful 2xx provider responses. Failed calls and health probes never charge.
+
 ## Tiered membership and staking
 
 BRIDLE includes a staking-style membership MVP. Operators lock BRDL into a tier and receive an earnings multiplier that boosts the live estimated USDC accrual ticker on the dashboard.
@@ -344,6 +386,16 @@ The current implementation is an MVP ledger for BRDL locks. Production staking s
 ## Auto-router model
 
 BRIDLE includes an Auto-router MVP that scores resources against routing venues and reallocates every five minutes in the local runtime. The dashboard shows the live routes table, score breakdowns, allocation percentages, last run, next run, and a manual reroute control.
+
+Token-gated router priority is unlocked for verified `$BRIDLE` holders:
+
+```text
+$BRIDLE mint = 4i52FSf22KYBU8424Z2AGmJNG299jQhxM74YK1Espump
+minimum holder balance = 1,000 $BRIDLE
+holder priority boost = +12 route priority units
+```
+
+The Wallet page can verify a connected wallet by reading SPL token accounts for the `$BRIDLE` mint. When the holder gate is active, the auto-router adds a `holder` score component and recalculates route allocations.
 
 The public `/network` page exposes the venue directory:
 
@@ -394,6 +446,7 @@ type AutoRoute = {
     reliability: number;
     cost: number;
     fit: number;
+    holder: number;
   };
   lastScoredAt: string;
   nextReallocationAt: string;
@@ -407,6 +460,7 @@ The MVP scoring function weighs:
 - error rate against the venue max
 - cost/access mode
 - type fit against venue requirements
+- `$BRIDLE` holder gate priority
 
 Production deployments should move the five-minute scheduler to a server cron, queue, or edge function and persist route changes in `auto_routes` plus `route_reallocations`.
 

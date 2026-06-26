@@ -2,6 +2,7 @@ import type {
   AutoRoute,
   BridleState,
   EarningsTicker,
+  ExecutionLog,
   FlowRun,
   MembershipTier,
   OrchestrationFlow,
@@ -10,8 +11,11 @@ import type {
   RouteReallocation,
   RouteVenue,
   StakePosition,
+  TokenGate,
   X402Settlement
 } from "@/lib/types";
+
+export const bridleTokenMint = "4i52FSf22KYBU8424Z2AGmJNG299jQhxM74YK1Espump";
 
 export const demoUser = {
   id: "user_demo",
@@ -47,6 +51,10 @@ export const seededResources: Resource[] = [
       errorRate: 0.7
     },
     earningsEstimate: 1240,
+    healthStatus: "healthy",
+    lastLatencyMs: 842,
+    lastHttpStatus: 200,
+    lastHealthAt: "2026-06-23T15:35:00.000Z",
     createdAt: "2026-06-02T10:12:00.000Z",
     lastHeartbeat: "2026-06-23T15:35:00.000Z"
   },
@@ -75,6 +83,10 @@ export const seededResources: Resource[] = [
       errorRate: 1.2
     },
     earningsEstimate: 2860,
+    healthStatus: "healthy",
+    lastLatencyMs: 1180,
+    lastHttpStatus: 200,
+    lastHealthAt: "2026-06-23T15:33:00.000Z",
     createdAt: "2026-06-04T18:21:00.000Z",
     lastHeartbeat: "2026-06-23T15:33:00.000Z"
   },
@@ -103,6 +115,10 @@ export const seededResources: Resource[] = [
       errorRate: 3.8
     },
     earningsEstimate: 420,
+    healthStatus: "degraded",
+    lastLatencyMs: 231,
+    lastHttpStatus: 503,
+    lastHealthAt: "2026-06-23T15:29:00.000Z",
     createdAt: "2026-06-08T08:00:00.000Z",
     lastHeartbeat: "2026-06-23T15:29:00.000Z"
   },
@@ -131,6 +147,10 @@ export const seededResources: Resource[] = [
       errorRate: 0
     },
     earningsEstimate: 160,
+    healthStatus: "error",
+    lastLatencyMs: 0,
+    lastHttpStatus: undefined,
+    lastHealthAt: "2026-06-23T13:02:00.000Z",
     createdAt: "2026-06-10T12:15:00.000Z",
     lastHeartbeat: "2026-06-23T13:02:00.000Z"
   },
@@ -158,6 +178,10 @@ export const seededResources: Resource[] = [
       errorRate: 0
     },
     earningsEstimate: 0,
+    healthStatus: "healthy",
+    lastLatencyMs: 410,
+    lastHttpStatus: 200,
+    lastHealthAt: "2026-06-23T15:36:00.000Z",
     createdAt: "2026-06-11T16:42:00.000Z",
     lastHeartbeat: "2026-06-23T15:36:00.000Z"
   },
@@ -186,10 +210,16 @@ export const seededResources: Resource[] = [
       errorRate: 0.1
     },
     earningsEstimate: 980,
+    healthStatus: "healthy",
+    lastLatencyMs: 96,
+    lastHttpStatus: 200,
+    lastHealthAt: "2026-06-23T15:34:00.000Z",
     createdAt: "2026-06-14T19:12:00.000Z",
     lastHeartbeat: "2026-06-23T15:34:00.000Z"
   }
 ];
+
+export const seededExecutionLogs: ExecutionLog[] = [];
 
 export const seededMembershipTiers: MembershipTier[] = [
   {
@@ -245,6 +275,18 @@ export const seededEarningsTicker: EarningsTicker = {
   boostedUsdcPerSecond: 0.002948,
   multiplier: 1.35,
   lastTickAt: "2026-06-23T15:36:00.000Z"
+};
+
+export const seededTokenGate: TokenGate = {
+  id: "gate_bridle_holder",
+  tokenSymbol: "$BRIDLE",
+  mintAddress: bridleTokenMint,
+  holderAddress: "DemoWallet111111111111111111111111111111111",
+  balance: 18888,
+  minBalance: 1000,
+  priorityBoost: 12,
+  status: "active",
+  verifiedAt: "2026-06-23T15:36:00.000Z"
 };
 
 export const seededConnections: ResourceConnection[] = [
@@ -343,7 +385,8 @@ export const seededAutoRoutes: AutoRoute[] = [
       latency: 94,
       reliability: 96,
       cost: 86,
-      fit: 100
+      fit: 100,
+      holder: 60
     },
     lastScoredAt: "2026-06-23T15:35:00.000Z",
     nextReallocationAt: "2026-06-23T15:40:00.000Z"
@@ -361,7 +404,8 @@ export const seededAutoRoutes: AutoRoute[] = [
       latency: 100,
       reliability: 99,
       cost: 82,
-      fit: 82
+      fit: 82,
+      holder: 60
     },
     lastScoredAt: "2026-06-23T15:35:00.000Z",
     nextReallocationAt: "2026-06-23T15:40:00.000Z"
@@ -379,7 +423,8 @@ export const seededAutoRoutes: AutoRoute[] = [
       latency: 91,
       reliability: 95,
       cost: 88,
-      fit: 100
+      fit: 100,
+      holder: 60
     },
     lastScoredAt: "2026-06-23T15:35:00.000Z",
     nextReallocationAt: "2026-06-23T15:40:00.000Z"
@@ -397,7 +442,8 @@ export const seededAutoRoutes: AutoRoute[] = [
       latency: 100,
       reliability: 52,
       cost: 90,
-      fit: 62
+      fit: 62,
+      holder: 60
     },
     lastScoredAt: "2026-06-23T15:35:00.000Z",
     nextReallocationAt: "2026-06-23T15:40:00.000Z"
@@ -415,7 +461,8 @@ export const seededAutoRoutes: AutoRoute[] = [
       latency: 100,
       reliability: 100,
       cost: 86,
-      fit: 100
+      fit: 100,
+      holder: 60
     },
     lastScoredAt: "2026-06-23T15:35:00.000Z",
     nextReallocationAt: "2026-06-23T15:40:00.000Z"
@@ -433,7 +480,8 @@ export const seededAutoRoutes: AutoRoute[] = [
       latency: 100,
       reliability: 100,
       cost: 92,
-      fit: 100
+      fit: 100,
+      holder: 60
     },
     lastScoredAt: "2026-06-23T15:35:00.000Z",
     nextReallocationAt: "2026-06-23T15:40:00.000Z"
@@ -575,10 +623,12 @@ export const initialState: BridleState = {
     payoutEnabled: true,
     createdAt: "2026-06-11T16:42:00.000Z"
   },
+  tokenGate: seededTokenGate,
   membershipTiers: seededMembershipTiers,
   stakePositions: seededStakePositions,
   earningsTicker: seededEarningsTicker,
   resources: seededResources,
+  executionLogs: seededExecutionLogs,
   connections: seededConnections,
   venues: seededVenues,
   autoRoutes: seededAutoRoutes,

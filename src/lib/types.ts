@@ -2,6 +2,8 @@ export type ResourceType = "ai-agent" | "api" | "gpu" | "pc-worker" | "wallet" |
 
 export type ResourceStatus = "active" | "degraded" | "offline" | "pending";
 
+export type ResourceHealthStatus = "unknown" | "healthy" | "degraded" | "error";
+
 export type Visibility = "private" | "team" | "public" | "monetized";
 
 export type PricingMode = "internal" | "free" | "metered" | "subscription" | "settlement";
@@ -34,6 +36,18 @@ export type EarningsTicker = {
   boostedUsdcPerSecond: number;
   multiplier: number;
   lastTickAt: string;
+};
+
+export type TokenGate = {
+  id: string;
+  tokenSymbol: "$BRIDLE";
+  mintAddress: string;
+  holderAddress?: string;
+  balance: number;
+  minBalance: number;
+  priorityBoost: number;
+  status: "unverified" | "active" | "insufficient";
+  verifiedAt?: string;
 };
 
 export type User = {
@@ -77,8 +91,31 @@ export type Resource = {
   tags: string[];
   usage: ResourceUsage;
   earningsEstimate: number;
+  healthStatus: ResourceHealthStatus;
+  lastLatencyMs?: number;
+  lastHttpStatus?: number;
+  lastHealthAt?: string;
   createdAt: string;
   lastHeartbeat: string;
+};
+
+export type ExecutionKind = "live_call" | "health_probe";
+
+export type ExecutionLog = {
+  id: string;
+  resourceId: string;
+  callerUserId?: string;
+  providerUserId: string;
+  kind: ExecutionKind;
+  httpStatus?: number;
+  latencyMs: number;
+  attempts: number;
+  ok: boolean;
+  error?: string;
+  responseExcerpt: string;
+  endpointHost: string;
+  charged: boolean;
+  createdAt: string;
 };
 
 export type ResourceConnection = {
@@ -108,6 +145,7 @@ export type RouteScoreBreakdown = {
   reliability: number;
   cost: number;
   fit: number;
+  holder: number;
 };
 
 export type AutoRoute = {
@@ -261,10 +299,12 @@ export type Notification = {
 export type BridleState = {
   user: User | null;
   wallet: Wallet | null;
+  tokenGate: TokenGate;
   membershipTiers: MembershipTier[];
   stakePositions: StakePosition[];
   earningsTicker: EarningsTicker;
   resources: Resource[];
+  executionLogs: ExecutionLog[];
   connections: ResourceConnection[];
   venues: RouteVenue[];
   autoRoutes: AutoRoute[];

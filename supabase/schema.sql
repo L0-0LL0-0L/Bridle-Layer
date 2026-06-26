@@ -52,6 +52,20 @@ create table public.earnings_tickers (
   updated_at timestamptz not null default now()
 );
 
+create table public.token_gates (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.users(id) on delete cascade,
+  token_symbol text not null default '$BRIDLE',
+  mint_address text not null,
+  holder_address text,
+  balance numeric not null default 0,
+  min_balance numeric not null default 1000,
+  priority_boost integer not null default 12,
+  status text not null default 'unverified',
+  verified_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+
 create table public.resources (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid references public.users(id) on delete cascade,
@@ -67,8 +81,29 @@ create table public.resources (
   tags text[] not null default '{}',
   usage jsonb not null default '{}'::jsonb,
   earnings_estimate numeric not null default 0,
+  health_status text not null default 'unknown',
+  last_latency_ms integer,
+  last_http_status integer,
+  last_health_at timestamptz,
   created_at timestamptz not null default now(),
   last_heartbeat timestamptz not null default now()
+);
+
+create table public.execution_logs (
+  id uuid primary key default gen_random_uuid(),
+  resource_id uuid references public.resources(id) on delete cascade,
+  caller_user_id uuid references public.users(id) on delete set null,
+  provider_user_id uuid references public.users(id) on delete cascade,
+  kind text not null,
+  http_status integer,
+  latency_ms integer not null,
+  attempts integer not null,
+  ok boolean not null,
+  error text,
+  response_excerpt text not null default '',
+  endpoint_host text not null default '',
+  charged boolean not null default false,
+  created_at timestamptz not null default now()
 );
 
 create table public.resource_connections (
@@ -237,7 +272,9 @@ alter table public.wallets enable row level security;
 alter table public.membership_tiers enable row level security;
 alter table public.stake_positions enable row level security;
 alter table public.earnings_tickers enable row level security;
+alter table public.token_gates enable row level security;
 alter table public.resources enable row level security;
+alter table public.execution_logs enable row level security;
 alter table public.resource_connections enable row level security;
 alter table public.orchestration_flows enable row level security;
 alter table public.flow_runs enable row level security;
@@ -253,3 +290,13 @@ alter table public.api_keys enable row level security;
 alter table public.audit_logs enable row level security;
 alter table public.marketplace_listings enable row level security;
 alter table public.notifications enable row level security;
+
+create policy "execution logs readable by caller or provider"
+on public.execution_logs
+for select
+using (caller_user_id = auth.uid() or provider_user_id = auth.uid());
+
+create policy "execution logs insertable by caller or provider"
+on public.execution_logs
+for insert
+with check (caller_user_id = auth.uid() or provider_user_id = auth.uid());

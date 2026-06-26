@@ -29,6 +29,10 @@ describe("listMarketplace", () => {
           errorRate: 0.2
         },
         earningsEstimate: 320,
+        healthStatus: "healthy",
+        lastLatencyMs: 180,
+        lastHttpStatus: 200,
+        lastHealthAt: "2026-06-25T10:01:00.000Z",
         createdAt: "2026-06-25T10:00:00.000Z",
         lastHeartbeat: "2026-06-25T10:01:00.000Z"
       }
