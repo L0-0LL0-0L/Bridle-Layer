@@ -6,6 +6,7 @@ import {
   Activity,
   BookOpen,
   ChartNoAxesCombined,
+  Clapperboard,
   Gauge,
   Globe2,
   HeartPulse,
@@ -24,6 +25,7 @@ import { summarizeResources } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
+  { href: "/demo", label: "Demo Mode", icon: Clapperboard },
   { href: "/resources", label: "Registry", icon: Activity },
   { href: "/resources/new", label: "Add Resource", icon: Plus },
   { href: "/orchestration", label: "Orchestration", icon: Workflow },

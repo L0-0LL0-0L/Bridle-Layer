@@ -38,6 +38,9 @@ export default function LandingPage() {
               </Link>
             </Button>
             <Button asChild size="lg" variant="ghost">
+              <Link href="/demo">Run demo mode</Link>
+            </Button>
+            <Button asChild size="lg" variant="ghost">
               <Link href="/docs">
                 Read protocol docs
               </Link>
